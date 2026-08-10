@@ -437,6 +437,20 @@ function buildAnamneseTable(s){
   `).join('');
 }
 
+// ---------- LEMBRETE DE BACKUP ----------
+const BACKUP_KEY = 'fitpro_last_backup';
+const BACKUP_DIAS_LIMITE = 7;
+function registrarBackupFeito(){
+  localStorage.setItem(BACKUP_KEY, new Date().toISOString().slice(0,10));
+}
+function backupStatus(){
+  const ultima = localStorage.getItem(BACKUP_KEY);
+  if(!ultima) return { atrasado:true, dias:null, nunca:true };
+  const dias = diasDesde(ultima);
+  if(dias!==null && dias > BACKUP_DIAS_LIMITE) return { atrasado:true, dias, nunca:false };
+  return { atrasado:false, dias, nunca:false };
+}
+
 // ---------- MODELOS DE FICHA ----------
 const TEMPLATES_FICHA = {
   hipertrofia: {
@@ -566,6 +580,7 @@ function renderStudentsList(){
       <button id="btnAddStudent">+ Novo aluno</button>
     </div>
     ${atrasadosCount>0 ? `<div class="banner noprint">⏰ <strong>${atrasadosCount} aluno(s)</strong> estão há mais de ${REAVAL_DIAS_LIMITE} dias sem reavaliação física (ou nunca avaliados). <span style="text-decoration:underline;cursor:pointer;" id="bannerVerAtrasados">Ver quem são</span></div>` : ''}
+    ${(()=>{ const b = backupStatus(); if(!b.atrasado) return ''; const msg = b.nunca ? 'Você ainda não exportou nenhum backup dos dados.' : `Já se passaram ${b.dias} dias desde o último backup exportado.`; return `<div class="banner noprint">💾 ${msg} <span style="text-decoration:underline;cursor:pointer;" id="bannerIrBackup">Ir para Backup</span></div>`; })()}
     <div class="card noprint" style="margin-bottom:16px;">
       <div class="field" style="margin-bottom:0;">
         <label>🔎 Buscar aluno</label>
@@ -1026,6 +1041,7 @@ function renderBackup(){
     <div class="card noprint">
       <div style="font-weight:600;margin-bottom:8px;">Exportar backup</div>
       <div class="meta" style="margin-bottom:12px;">Gera um arquivo .json com todos os alunos, fichas, avaliações e o banco de exercícios.</div>
+      ${(()=>{ const b = backupStatus(); const cor = b.atrasado ? 'var(--yellow)' : 'var(--green)'; const msg = b.nunca ? 'Nenhum backup exportado ainda.' : (b.atrasado ? `Último backup há ${b.dias} dia(s) — recomendado exportar a cada ${BACKUP_DIAS_LIMITE} dias.` : `Último backup há ${b.dias} dia(s). Tudo em dia.`); return `<div class="meta" style="margin-bottom:12px;color:${cor};font-weight:600;">${b.atrasado?'⚠️':'✅'} ${msg}</div>`; })()}
       <button id="btnExportBackup">⬇ Baixar backup (.json)</button>
     </div>
     <div class="card noprint">
@@ -1048,6 +1064,8 @@ function exportBackup(){
   a.click();
   a.remove();
   try{ URL.revokeObjectURL(url); }catch(e){}
+  registrarBackupFeito();
+  render();
 }
 
 function importBackupFile(file){
@@ -1097,6 +1115,12 @@ function bindEvents(){
   if(btnFiltroAtrasados) btnFiltroAtrasados.onclick = ()=>{ state.studentFilter='atrasados'; render(); };
   const bannerVerAtrasados = document.getElementById('bannerVerAtrasados');
   if(bannerVerAtrasados) bannerVerAtrasados.onclick = ()=>{ state.studentFilter='atrasados'; render(); };
+  const bannerIrBackup = document.getElementById('bannerIrBackup');
+  if(bannerIrBackup) bannerIrBackup.onclick = ()=>{
+    document.querySelectorAll('nav .tab').forEach(x=>x.classList.remove('active'));
+    document.querySelector('nav .tab[data-tab="backup"]').classList.add('active');
+    state.tab = 'backup'; state.studentId = null; render();
+  };
   const back = document.getElementById('backToStudents');
   if(back) back.onclick = ()=>{ state.studentId=null; render(); };
 
