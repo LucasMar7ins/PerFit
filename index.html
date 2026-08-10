@@ -362,7 +362,7 @@ function saveDB(){ localStorage.setItem(DB_KEY, JSON.stringify(db)); }
 function uid(){ return Math.random().toString(36).slice(2,10); }
 
 let db = loadDB();
-let state = { tab:'alunos', studentId:null, chartMetric:'peso', studentFilter:'ativos', collapsedSections: { anamnese:true, evolucao:true, avaliacoes:true } };
+let state = { tab:'alunos', studentId:null, chartMetric:'peso', studentFilter:'ativos', collapsedSections: { anamnese:true, evolucao:true, avaliacoes:true, fichas:false, cargas:false } };
 
 // ---------- REAVALIAÇÃO (lembrete) ----------
 const REAVAL_DIAS_LIMITE = 45; // ~6-7 semanas sem atualizar medidas
@@ -893,7 +893,7 @@ function renderStudentDetail(id){
     </div>
 
     <div class="sectionTitle">
-      <span class="collapseToggle" data-toggle-section="avaliacoes"><span class="collapseArrow">${state.collapsedSections.avaliacoes?'▶':'▼'}</span> 📋 Avaliação física / Anamnese</span>
+      <span class="collapseToggle" data-toggle-section="avaliacoes"><span class="collapseArrow">${state.collapsedSections.avaliacoes?'▶':'▼'}</span> 📋 Avaliação física</span>
       <button class="secondary small noprint" id="btnNewAval" style="margin-left:auto;">+ Nova avaliação</button>
     </div>
     ${(()=>{ const r = reavaliacaoStatus(s); if(!r || !r.atrasada) return ''; const msg = r.motivo==='nunca' ? 'Este aluno ainda não tem nenhuma avaliação física registrada.' : `Já se passaram ${r.dias} dias desde a última avaliação (limite recomendado: ${REAVAL_DIAS_LIMITE} dias).`; return `<div class="banner noprint">⏰ ${msg}</div>`; })()}
@@ -901,13 +901,20 @@ function renderStudentDetail(id){
       ${avaliacoesHtml || '<div class="empty">Nenhuma avaliação registrada. Clique em "+ Nova avaliação" para lançar peso, altura, circunferências e anamnese inicial.</div>'}
     </div>
 
-    <div class="sectionTitle">🏋️ Fichas de treino</div>
-    ${fichasHtml || '<div class="empty">Nenhuma ficha criada para este aluno ainda.</div>'}
+    <div class="sectionTitle">
+      <span class="collapseToggle" data-toggle-section="fichas"><span class="collapseArrow">${state.collapsedSections.fichas?'▶':'▼'}</span> 🏋️ Fichas de treino</span>
+    </div>
+    <div class="collapsibleContent" style="display:${state.collapsedSections.fichas?'none':'block'};">
+      ${fichasHtml || '<div class="empty">Nenhuma ficha criada para este aluno ainda.</div>'}
+    </div>
 
-    <div class="sectionTitle">📈 Histórico de carga
+    <div class="sectionTitle">
+      <span class="collapseToggle" data-toggle-section="cargas"><span class="collapseArrow">${state.collapsedSections.cargas?'▶':'▼'}</span> 📈 Histórico de carga</span>
       <button class="secondary small noprint" id="btnNewCarga" style="margin-left:auto;">+ Registrar carga</button>
     </div>
-    ${cargaHtml || '<div class="empty">Nenhum registro de carga ainda. Use isso para acompanhar a evolução do aluno exercício a exercício.</div>'}
+    <div class="collapsibleContent" style="display:${state.collapsedSections.cargas?'none':'block'};">
+      ${cargaHtml || '<div class="empty">Nenhum registro de carga ainda. Use isso para acompanhar a evolução do aluno exercício a exercício.</div>'}
+    </div>
   `;
 }
 
