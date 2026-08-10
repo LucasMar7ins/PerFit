@@ -88,6 +88,10 @@
   .inlineEdit:hover{border-color:var(--line);background:var(--panel2);}
   .inlineEdit:focus{border-color:var(--accent);background:var(--panel2);outline:none;}
   .onlyPrint{display:none;}
+  .collapseToggle{cursor:pointer;display:flex;align-items:center;gap:8px;user-select:none;}
+  .collapseToggle:hover{color:var(--accent);}
+  .collapseArrow{display:inline-block;font-size:11px;color:var(--muted);transition:transform .15s;width:10px;}
+  @media print{ .collapsibleContent{display:block !important;} }
   .toastContainer{position:fixed;top:16px;right:16px;z-index:200;display:flex;flex-direction:column;gap:8px;max-width:320px;}
   .toast{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);color:var(--text);padding:12px 14px;border-radius:8px;font-size:13px;box-shadow:0 6px 18px rgba(0,0,0,.35);opacity:0;transform:translateX(24px);transition:opacity .25s ease,transform .25s ease;}
   .toast.show{opacity:1;transform:translateX(0);}
@@ -357,7 +361,7 @@ function saveDB(){ localStorage.setItem(DB_KEY, JSON.stringify(db)); }
 function uid(){ return Math.random().toString(36).slice(2,10); }
 
 let db = loadDB();
-let state = { tab:'alunos', studentId:null, chartMetric:'peso', studentFilter:'ativos' };
+let state = { tab:'alunos', studentId:null, chartMetric:'peso', studentFilter:'ativos', collapsedSections: { anamnese:true, evolucao:true, avaliacoes:true } };
 
 // ---------- REAVALIAÇÃO (lembrete) ----------
 const REAVAL_DIAS_LIMITE = 45; // ~6-7 semanas sem atualizar medidas
@@ -855,36 +859,45 @@ function renderStudentDetail(id){
       <button class="danger" id="btnDelStudent">Excluir aluno</button>
     </div>
 
-    <div class="sectionTitle">🩺 Anamnese completa
+    <div class="sectionTitle">
+      <span class="collapseToggle" data-toggle-section="anamnese"><span class="collapseArrow">${state.collapsedSections.anamnese?'▶':'▼'}</span> 🩺 Anamnese completa</span>
       <button class="secondary small noprint" id="btnEditAnamnese" style="margin-left:auto;">${anamneseRespondida(s)?'Editar anamnese':'+ Preencher anamnese'}</button>
     </div>
-    ${anamneseRespondida(s) ? `
-      <div class="card" style="overflow-x:auto;">
-        <table style="min-width:480px;">
-          <tbody>${buildAnamneseTable(s)}</tbody>
-        </table>
-      </div>
-    ` : '<div class="empty">Nenhuma anamnese preenchida ainda. Clique em "+ Preencher anamnese" para registrar o histórico de saúde e hábitos de vida do aluno.</div>'}
+    <div class="collapsibleContent" style="display:${state.collapsedSections.anamnese?'none':'block'};">
+      ${anamneseRespondida(s) ? `
+        <div class="card" style="overflow-x:auto;">
+          <table style="min-width:480px;">
+            <tbody>${buildAnamneseTable(s)}</tbody>
+          </table>
+        </div>
+      ` : '<div class="empty">Nenhuma anamnese preenchida ainda. Clique em "+ Preencher anamnese" para registrar o histórico de saúde e hábitos de vida do aluno.</div>'}
+    </div>
 
-    <div class="sectionTitle">📊 Evolução
+    <div class="sectionTitle">
+      <span class="collapseToggle" data-toggle-section="evolucao"><span class="collapseArrow">${state.collapsedSections.evolucao?'▶':'▼'}</span> 📊 Evolução</span>
       <select id="chartMetricSelect" class="noprint" style="margin-left:auto;">
         ${METRICAS_EVOLUCAO.map(m=>`<option value="${m.key}" ${m.key===metric.key?'selected':''}>${m.label}</option>`).join('')}
       </select>
     </div>
-    <div class="card">${chartHtml}</div>
-    ${buildComparisonTable(avaliacoesAsc)}
-    ${comparePhotosHtml ? `
-      <div class="card">
-        <div style="font-weight:600;margin-bottom:10px;">📸 Antes x Depois</div>
-        <div class="row" style="gap:24px;justify-content:flex-start;">${comparePhotosHtml}</div>
-      </div>
-    ` : ''}
+    <div class="collapsibleContent" style="display:${state.collapsedSections.evolucao?'none':'block'};">
+      <div class="card">${chartHtml}</div>
+      ${buildComparisonTable(avaliacoesAsc)}
+      ${comparePhotosHtml ? `
+        <div class="card">
+          <div style="font-weight:600;margin-bottom:10px;">📸 Antes x Depois</div>
+          <div class="row" style="gap:24px;justify-content:flex-start;">${comparePhotosHtml}</div>
+        </div>
+      ` : ''}
+    </div>
 
-    <div class="sectionTitle">📋 Avaliação física / Anamnese
+    <div class="sectionTitle">
+      <span class="collapseToggle" data-toggle-section="avaliacoes"><span class="collapseArrow">${state.collapsedSections.avaliacoes?'▶':'▼'}</span> 📋 Avaliação física / Anamnese</span>
       <button class="secondary small noprint" id="btnNewAval" style="margin-left:auto;">+ Nova avaliação</button>
     </div>
     ${(()=>{ const r = reavaliacaoStatus(s); if(!r || !r.atrasada) return ''; const msg = r.motivo==='nunca' ? 'Este aluno ainda não tem nenhuma avaliação física registrada.' : `Já se passaram ${r.dias} dias desde a última avaliação (limite recomendado: ${REAVAL_DIAS_LIMITE} dias).`; return `<div class="banner noprint">⏰ ${msg}</div>`; })()}
-    ${avaliacoesHtml || '<div class="empty">Nenhuma avaliação registrada. Clique em "+ Nova avaliação" para lançar peso, altura, circunferências e anamnese inicial.</div>'}
+    <div class="collapsibleContent" style="display:${state.collapsedSections.avaliacoes?'none':'block'};">
+      ${avaliacoesHtml || '<div class="empty">Nenhuma avaliação registrada. Clique em "+ Nova avaliação" para lançar peso, altura, circunferências e anamnese inicial.</div>'}
+    </div>
 
     <div class="sectionTitle">🏋️ Fichas de treino</div>
     ${fichasHtml || '<div class="empty">Nenhuma ficha criada para este aluno ainda.</div>'}
@@ -1097,6 +1110,14 @@ function bindEvents(){
     state.chartMetric = chartMetricSelect.value;
     render();
   };
+
+  document.querySelectorAll('[data-toggle-section]').forEach(el=>{
+    el.onclick = ()=>{
+      const key = el.dataset.toggleSection;
+      state.collapsedSections[key] = !state.collapsedSections[key];
+      render();
+    };
+  });
 
   const btnEditAnamnese = document.getElementById('btnEditAnamnese');
   if(btnEditAnamnese) btnEditAnamnese.onclick = ()=> openAnamneseModal();
