@@ -821,6 +821,11 @@ function renderPagamentos(){
   const emDia = alunos.filter(s=>statusPagamentoAluno(s).status==='em_dia').length;
   const pendentes = alunos.filter(s=>statusPagamentoAluno(s).status==='pendente').length;
   const atrasados = alunos.filter(s=>statusPagamentoAluno(s).status==='atrasado').length;
+  const receitaEstimada = alunos.reduce((soma,s)=>{
+    const v = parseFloat(String((s.pagamento||{}).valorMensalidade||'').replace(',','.'));
+    return soma + (isNaN(v) ? 0 : v);
+  }, 0);
+  const receitaFormatada = receitaEstimada.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
   return `
     <h2>Pagamentos</h2>
     <div class="sub">Controle de mensalidade dos alunos: status, método de pagamento e nota fiscal.</div>
@@ -828,6 +833,7 @@ function renderPagamentos(){
       <span class="tag green">✅ ${emDia} em dia</span>
       <span class="tag yellow">🕒 ${pendentes} pendente(s)</span>
       <span class="tag red">⚠️ ${atrasados} atrasado(s)</span>
+      <span class="tag gray" style="margin-left:auto;" title="Soma da mensalidade configurada de todos os alunos ativos — o teto do mês, se todos pagarem em dia.">💰 Receita mensal estimada: R$ ${receitaFormatada}</span>
     </div>
     ${atrasados>0 ? `<div class="banner noprint">⚠️ <strong>${atrasados} aluno(s)</strong> com pagamento atrasado este mês.</div>` : ''}
     <div class="card" style="overflow-x:auto;">
