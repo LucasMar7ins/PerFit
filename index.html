@@ -1567,7 +1567,7 @@ function renderStudentDetail(id){
         </div>
         <div class="row noprint">
           ${f.ativa ? `<button class="small" data-live-start="${f.id}">▶️ Iniciar treino</button>` : ''}
-          ${(feitos===total && total>0) ? `<button class="small" style="background:var(--green);" data-resumo-treino="${f.id}">📩 Enviar resumo pro aluno</button>` : ''}
+          ${(feitos===total && total>0) ? `<button class="small" style="background:var(--green);" data-resumo-treino="${f.id}">Enviar resumo pro aluno</button>` : ''}
           <button class="secondary small" data-edit-ficha="${f.id}">Editar</button>
           <button class="ghost small" data-duplicate-ficha="${f.id}">Duplicar / Alternar</button>
           ${s.fichas.length>1 ? `<button class="ghost small" data-compare-ficha="${f.id}">🔀 Comparar</button>` : ''}
@@ -2233,7 +2233,7 @@ document.getElementById('modalBg').addEventListener('click', e=>{
 const PERGUNTAS_RESUMO_TREINO = [
   { chave:'desempenho', label:'Desempenho geral do aluno hoje?', prefixo:'Desempenho', opcoes:['Excelente','Bom','Regular'] },
   { chave:'esforco', label:'Nível de esforço aplicado?', prefixo:'Esforço', opcoes:['Alto','Moderado','Leve'] },
-  { chave:'evolucao', label:'Evolução em relação ao treino anterior?', prefixo:'Evolução', opcoes:['Evoluiu 📈','Manteve o nível ➡️','Precisa ajustar 🔧'] },
+  { chave:'evolucao', label:'Evolução em relação ao treino anterior?', prefixo:'Evolução', opcoes:['Evoluiu','Manteve o nível','Precisa ajustar'] },
 ];
 
 function openResumoTreinoModal(studentId, fichaId){
@@ -2246,10 +2246,10 @@ function openResumoTreinoModal(studentId, fichaId){
 
   function montarMensagem(){
     const linhas = PERGUNTAS_RESUMO_TREINO.map(p=> `${p.prefixo}: ${escolhas[p.chave]}`);
-    return `Oi ${s.nome}! Você concluiu o ${nomeFicha} hoje 💪\n${linhas.join('\n')}\nContinue assim!`;
+    return `Oi ${s.nome}! Você concluiu o ${nomeFicha} hoje.\n${linhas.join('\n')}\nContinue assim!`;
   }
 
-  const avisoWhatsapp = !s.whatsapp ? `<div class="meta" style="color:var(--yellow);margin-bottom:12px;">⚠️ Cadastre o WhatsApp do aluno em "Editar aluno" para poder enviar.</div>` : '';
+  const avisoWhatsapp = !s.whatsapp ? `<div class="meta" style="color:var(--yellow);margin-bottom:12px;">Cadastre o WhatsApp do aluno em "Editar aluno" para poder enviar.</div>` : '';
 
   openModal(`
     <h3>Resumo do treino</h3>
@@ -2264,8 +2264,8 @@ function openResumoTreinoModal(studentId, fichaId){
       </div>
     `).join('')}
     <div class="field">
-      <label>Prévia da mensagem</label>
-      <div id="resumoPreview" class="anamneseBox" style="white-space:pre-wrap;">${escapeHtml(montarMensagem())}</div>
+      <label>Prévia da mensagem (edite se quiser adicionar algo)</label>
+      <textarea id="resumoPreview" rows="6">${escapeHtml(montarMensagem())}</textarea>
     </div>
     <div class="actions">
       <button class="secondary" onclick="closeModal()">Cancelar</button>
@@ -2283,14 +2283,15 @@ function openResumoTreinoModal(studentId, fichaId){
         b.style.color = selecionado ? 'var(--green)' : 'var(--text)';
         b.style.border = selecionado ? '1px solid var(--green)' : '1px solid var(--line)';
       });
-      document.getElementById('resumoPreview').textContent = montarMensagem();
+      document.getElementById('resumoPreview').value = montarMensagem();
     };
   });
 
   const resumoEnviar = document.getElementById('resumoEnviar');
   if(resumoEnviar) resumoEnviar.onclick = ()=>{
     if(!s.whatsapp) return;
-    window.open(whatsappLink(s.whatsapp, montarMensagem()), '_blank');
+    const mensagemFinal = document.getElementById('resumoPreview').value;
+    window.open(whatsappLink(s.whatsapp, mensagemFinal), '_blank');
     closeModal();
   };
 }
