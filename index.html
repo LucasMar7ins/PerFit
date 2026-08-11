@@ -718,12 +718,29 @@ const DIAS_SEMANA = [
   {key:'dom', label:'Domingo'},
 ];
 
+function diaSemanaFromISODate(iso){
+  if(!iso) return null;
+  const d = new Date(iso+'T00:00:00');
+  if(isNaN(d.getTime())) return null;
+  const map = ['dom','seg','ter','qua','qui','sex','sab'];
+  return map[d.getDay()];
+}
+
 function renderAgenda(){
   const alunos = db.students.filter(s=>(s.status||'ativo')==='ativo');
+  const hojeISO = new Date().toISOString().slice(0,10);
   const colunas = DIAS_SEMANA.map(dia=>{
     const slots = [];
     alunos.forEach(s=>{
-      (s.agenda||[]).filter(a=>a.dia===dia.key).forEach(a=> slots.push({...a, aluno: s}));
+      (s.agenda||[]).forEach(a=>{
+        if(a.tipo==='unico'){
+          if(!a.data || a.data < hojeISO) return;
+          if(diaSemanaFromISODate(a.data) !== dia.key) return;
+        } else {
+          if(a.dia !== dia.key) return;
+        }
+        slots.push({...a, aluno: s});
+      });
     });
     slots.sort((a,b)=> (a.horario||'').localeCompare(b.horario||''));
     return `
@@ -732,6 +749,7 @@ function renderAgenda(){
         ${slots.map(a=>`
           <div class="agendaSlot" data-agenda-slot="${a.aluno.id}|${a.id}" title="Clique para editar ou remover">
             <span class="hora">${escapeHtml(a.horario||'-')}</span> — ${escapeHtml(a.aluno.nome)}
+            ${a.tipo==='unico' ? `<div style="color:var(--accent2);margin-top:2px;">📅 ${formatDate(a.data)} (única)</div>` : ''}
             ${a.obs ? `<div style="color:var(--muted);margin-top:2px;">${escapeHtml(a.obs)}</div>` : ''}
           </div>
         `).join('') || '<div class="meta" style="text-align:center;">-</div>'}
@@ -753,6 +771,7 @@ function openAgendaSlotModal(studentId, slotId){
   let s = studentId ? db.students.find(x=>x.id===studentId) : null;
   const slot = (s && slotId) ? (s.agenda||[]).find(x=>x.id===slotId) : null;
   const editing = !!slot;
+  const tipoAtual = editing ? (slot.tipo || 'recorrente') : 'recorrente';
   openModal(`
     <h3>${editing?'Editar':'Adicionar'} horário</h3>
     <div class="field"><label>Aluno</label>
@@ -761,11 +780,20 @@ function openAgendaSlotModal(studentId, slotId){
         ${alunos.map(a=>`<option value="${a.id}" ${(s&&s.id===a.id)?'selected':''}>${escapeHtml(a.nome)}</option>`).join('')}
       </select>
     </div>
+    <div class="field"><label>Repetição</label>
+      <select id="agTipo">
+        <option value="recorrente" ${tipoAtual==='recorrente'?'selected':''}>🔁 Toda semana (recorrente)</option>
+        <option value="unico" ${tipoAtual==='unico'?'selected':''}>📅 Só uma vez (data específica)</option>
+      </select>
+    </div>
     <div class="row">
-      <div class="field" style="flex:1"><label>Dia da semana</label>
+      <div class="field" style="flex:1" id="agDiaWrap"><label>Dia da semana</label>
         <select id="agDia">
           ${DIAS_SEMANA.map(d=>`<option value="${d.key}" ${editing&&slot.dia===d.key?'selected':''}>${d.label}</option>`).join('')}
         </select>
+      </div>
+      <div class="field" style="flex:1" id="agDataWrap"><label>Data</label>
+        <input id="agData" type="date" value="${editing&&slot.data?escapeAttr(slot.data):''}">
       </div>
       <div class="field" style="flex:1"><label>Horário</label><input id="agHorario" type="time" value="${editing?escapeAttr(slot.horario||''):''}"></div>
     </div>
@@ -776,19 +804,36 @@ function openAgendaSlotModal(studentId, slotId){
       <button id="agSave">Salvar</button>
     </div>
   `);
+
+  function syncTipoVisibility(){
+    const tipo = document.getElementById('agTipo').value;
+    document.getElementById('agDiaWrap').style.display = tipo==='recorrente' ? '' : 'none';
+    document.getElementById('agDataWrap').style.display = tipo==='unico' ? '' : 'none';
+  }
+  document.getElementById('agTipo').onchange = syncTipoVisibility;
+  syncTipoVisibility();
+
   document.getElementById('agSave').onclick = ()=>{
     const alunoId = editing ? s.id : document.getElementById('agAluno').value;
     if(!alunoId){ showToast('Selecione um aluno.', 'error'); return; }
-    const dia = document.getElementById('agDia').value;
+    const tipo = document.getElementById('agTipo').value;
     const horario = document.getElementById('agHorario').value;
     if(!horario){ showToast('Informe o horário.', 'error'); return; }
     const obs = document.getElementById('agObs').value.trim();
+    let dia = '', data = '';
+    if(tipo==='recorrente'){
+      dia = document.getElementById('agDia').value;
+    } else {
+      data = document.getElementById('agData').value;
+      if(!data){ showToast('Informe a data.', 'error'); return; }
+      dia = diaSemanaFromISODate(data);
+    }
     const aluno = db.students.find(x=>x.id===alunoId);
     if(!aluno.agenda) aluno.agenda = [];
     if(editing){
-      slot.dia = dia; slot.horario = horario; slot.obs = obs;
+      slot.tipo = tipo; slot.dia = dia; slot.data = data; slot.horario = horario; slot.obs = obs;
     } else {
-      aluno.agenda.push({id:uid(), dia, horario, obs});
+      aluno.agenda.push({id:uid(), tipo, dia, data, horario, obs});
     }
     saveDB(); closeModal(); render();
   };
