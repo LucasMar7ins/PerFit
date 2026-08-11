@@ -954,6 +954,7 @@ function renderStudentDetail(id){
 
     <div class="sectionTitle">
       <span class="collapseToggle" data-toggle-section="fichas"><span class="collapseArrow">${state.collapsedSections.fichas?'▶':'▼'}</span> 🏋️ Fichas de treino</span>
+      ${fichas.length>0 ? `<span class="tag gray" id="volTotalAluno" style="margin-left:auto;">🏋️ Volume total (todas as fichas): ${formatVolume(fichas.reduce((sum,f)=>sum+volumeTotalFicha(f),0))}kg</span>` : ''}
     </div>
     <div class="collapsibleContent" style="display:${state.collapsedSections.fichas?'none':'block'};">
       ${fichasHtml || '<div class="empty">Nenhuma ficha criada para este aluno ainda.</div>'}
@@ -1298,6 +1299,11 @@ function bindEvents(){
         if(volCell) volCell.textContent = formatVolume(calcularVolumeExercicio(ex));
         const volTotalEl = document.getElementById(`volTotal-${fichaId}`);
         if(volTotalEl) volTotalEl.textContent = '🏋️ Volume: ' + formatVolume(volumeTotalFicha(f)) + 'kg';
+        const volTotalAlunoEl = document.getElementById('volTotalAluno');
+        if(volTotalAlunoEl){
+          const totalAluno = s.fichas.reduce((sum,ff)=>sum+volumeTotalFicha(ff),0);
+          volTotalAlunoEl.textContent = '🏋️ Volume total (todas as fichas): ' + formatVolume(totalAluno) + 'kg';
+        }
       }
     });
   });
