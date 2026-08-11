@@ -51,6 +51,7 @@
   .tag.green{background:rgba(52,211,153,.15);color:var(--green);}
   .tag.gray{background:rgba(148,163,184,.15);color:var(--muted);}
   .tag.yellow{background:rgba(251,191,36,.15);color:var(--yellow);}
+  .tag.red{background:rgba(248,113,113,.15);color:var(--red);}
   .banner{border:1px solid var(--yellow);background:rgba(251,191,36,.08);border-radius:9px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--text);display:flex;align-items:center;gap:10px;}
   .compareCol{flex:1;min-width:0;}
   .compareCol table{font-size:13px;}
@@ -164,6 +165,7 @@
   <nav>
     <h1>Fit<span>Pro</span> Manager</h1>
     <div class="tab active" data-tab="alunos">👤 Alunos</div>
+    <div class="tab" data-tab="pagamentos">💳 Pagamentos</div>
     <div class="tab" data-tab="exercicios">🏋️ Banco de Exercícios</div>
     <div class="tab" data-tab="backup">💾 Backup</div>
   </nav>
@@ -474,6 +476,41 @@ function backupStatus(){
   return { atrasado:false, dias, nunca:false };
 }
 
+// ---------- PAGAMENTOS ----------
+const METODOS_PAGAMENTO = ['Pix','Dinheiro','Cartão de crédito','Cartão de débito','Transferência','Boleto','Outro'];
+
+function mesAtual(){ return new Date().toISOString().slice(0,7); }
+
+function formatMes(mes){
+  if(!mes) return '-';
+  const partes = mes.split('-');
+  if(partes.length!==2) return mes;
+  const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const idx = parseInt(partes[1],10)-1;
+  if(idx<0||idx>11) return mes;
+  return `${meses[idx]}/${partes[0]}`;
+}
+
+function statusPagamentoAluno(s){
+  const cfg = s.pagamento || {};
+  const registros = s.pagamentos || [];
+  const mAtual = mesAtual();
+  const registroAtual = registros.find(r=>r.mes===mAtual) || null;
+  if(registroAtual && registroAtual.status==='pago') return { status:'em_dia', registro: registroAtual };
+  if(!cfg.diaVencimento) return { status:'sem_config', registro: registroAtual };
+  const hoje = new Date();
+  const vencimento = new Date(hoje.getFullYear(), hoje.getMonth(), cfg.diaVencimento, 23, 59, 59);
+  if(hoje > vencimento) return { status:'atrasado', registro: registroAtual };
+  return { status:'pendente', registro: registroAtual };
+}
+
+function statusPagamentoLabel(status){
+  return { em_dia:'✅ Em dia', pendente:'🕒 Pendente', atrasado:'⚠️ Atrasado', sem_config:'⚙️ Não configurado' }[status] || status;
+}
+function statusPagamentoClass(status){
+  return { em_dia:'green', pendente:'yellow', atrasado:'red', sem_config:'gray' }[status] || 'gray';
+}
+
 // ---------- MODELOS DE FICHA ----------
 const TEMPLATES_FICHA = {
   hipertrofia: {
@@ -508,6 +545,8 @@ function render(){
     main.innerHTML = renderFichaPrint(state.printFicha.studentId, state.printFicha.fichaId);
   } else if(state.tab === 'alunos'){
     main.innerHTML = state.studentId ? renderStudentDetail(state.studentId) : renderStudentsList();
+  } else if(state.tab === 'pagamentos'){
+    main.innerHTML = renderPagamentos();
   } else if(state.tab === 'exercicios'){
     main.innerHTML = renderExercises();
   } else if(state.tab === 'backup'){
@@ -619,6 +658,42 @@ function renderStudentsList(){
     </div>
     <div class="studentList" id="studentListBody">
       ${cards || '<div class="empty">Nenhum aluno encontrado.</div>'}
+    </div>
+  `;
+}
+
+function renderPagamentos(){
+  const alunos = db.students.filter(s=>(s.status||'ativo')==='ativo').slice().sort((a,b)=>a.nome.localeCompare(b.nome));
+  const linhas = alunos.map(s=>{
+    const situacao = statusPagamentoAluno(s);
+    const cfg = s.pagamento || {};
+    return `
+      <tr>
+        <td>${escapeHtml(s.nome)}</td>
+        <td><span class="tag ${statusPagamentoClass(situacao.status)}">${statusPagamentoLabel(situacao.status)}</span></td>
+        <td>${cfg.diaVencimento ? 'Todo dia '+cfg.diaVencimento : '-'}</td>
+        <td>${cfg.valorMensalidade ? 'R$ '+escapeHtml(String(cfg.valorMensalidade)) : '-'}</td>
+        <td>${cfg.metodo ? escapeHtml(cfg.metodo) : '-'}</td>
+        <td class="noprint"><button class="secondary small" data-manage-pagamento="${s.id}">Gerenciar</button></td>
+      </tr>`;
+  }).join('');
+  const emDia = alunos.filter(s=>statusPagamentoAluno(s).status==='em_dia').length;
+  const pendentes = alunos.filter(s=>statusPagamentoAluno(s).status==='pendente').length;
+  const atrasados = alunos.filter(s=>statusPagamentoAluno(s).status==='atrasado').length;
+  return `
+    <h2>Pagamentos</h2>
+    <div class="sub">Controle de mensalidade dos alunos: status, método de pagamento e nota fiscal.</div>
+    <div class="row" style="margin-bottom:16px;gap:10px;">
+      <span class="tag green">✅ ${emDia} em dia</span>
+      <span class="tag yellow">🕒 ${pendentes} pendente(s)</span>
+      <span class="tag red">⚠️ ${atrasados} atrasado(s)</span>
+    </div>
+    ${atrasados>0 ? `<div class="banner noprint">⚠️ <strong>${atrasados} aluno(s)</strong> com pagamento atrasado este mês.</div>` : ''}
+    <div class="card" style="overflow-x:auto;">
+      <table>
+        <thead><tr><th>Aluno</th><th>Status (${formatMes(mesAtual())})</th><th>Vencimento</th><th>Mensalidade</th><th>Método</th><th class="noprint"></th></tr></thead>
+        <tbody>${linhas || `<tr><td colspan="6" class="empty">Nenhum aluno ativo cadastrado.</td></tr>`}</tbody>
+      </table>
     </div>
   `;
 }
@@ -901,12 +976,13 @@ function renderStudentDetail(id){
 
   return `
     <span class="backBtn noprint" id="backToStudents">&larr; Voltar para Alunos</span>
-    <h2>${escapeHtml(s.nome)} ${(s.status||'ativo')==='pausado'?'<span class="tag gray">PAUSADO</span>':''}</h2>
+    <h2>${escapeHtml(s.nome)} ${(s.status||'ativo')==='pausado'?'<span class="tag gray">PAUSADO</span>':''} <span class="tag ${statusPagamentoClass(statusPagamentoAluno(s).status)}">${statusPagamentoLabel(statusPagamentoAluno(s).status)}</span></h2>
     <div class="sub">${escapeHtml(s.objetivo||'')} ${s.nivel? ' • Nível: '+escapeHtml(s.nivel):''}</div>
     <div class="row noprint" style="margin-bottom:18px;">
       <button id="btnNewFicha">+ Nova ficha de treino</button>
       <button class="secondary" id="btnEditStudent">Editar aluno</button>
       <button class="secondary" id="btnToggleStatus">${(s.status||'ativo')==='pausado'?'Reativar aluno':'Pausar aluno'}</button>
+      <button class="secondary" id="btnPagamento">💳 Pagamento</button>
       <button class="ghost" onclick="window.print()">Imprimir / Exportar PDF</button>
       <button class="danger" id="btnDelStudent">Excluir aluno</button>
     </div>
@@ -1171,6 +1247,13 @@ function bindEvents(){
       saveDB(); state.studentId=null; render();
     }, {danger:true, confirmLabel:'Excluir'});
   };
+
+  const btnPagamento = document.getElementById('btnPagamento');
+  if(btnPagamento) btnPagamento.onclick = ()=> openPagamentosModal(state.studentId);
+
+  document.querySelectorAll('[data-manage-pagamento]').forEach(el=>{
+    el.onclick = ()=> openPagamentosModal(el.dataset.managePagamento);
+  });
 
   const btnNewFicha = document.getElementById('btnNewFicha');
   if(btnNewFicha) btnNewFicha.onclick = ()=> openFichaModal();
@@ -1758,6 +1841,184 @@ function openAnamneseModal(){
     s.anamneseCompleta = respostas;
     s.anamneseObservacoes = document.getElementById('anamObservacoes').value.trim();
     saveDB(); closeModal(); render();
+  };
+}
+
+// ---------- MODAL DE PAGAMENTOS ----------
+function openPagamentosModal(studentId){
+  const s = db.students.find(x=>x.id===studentId);
+  if(!s) return;
+  if(!s.pagamento) s.pagamento = {};
+  if(!s.pagamentos) s.pagamentos = [];
+  const cfg = s.pagamento;
+  const registros = s.pagamentos.slice().sort((a,b)=> b.mes.localeCompare(a.mes));
+  const situacao = statusPagamentoAluno(s);
+  document.getElementById('modalBody').classList.add('wide');
+  openModal(`
+    <h3 style="margin-bottom:2px;">💳 Pagamentos — ${escapeHtml(s.nome)}</h3>
+    <div class="row" style="margin:8px 0 16px;"><span class="tag ${statusPagamentoClass(situacao.status)}">${statusPagamentoLabel(situacao.status)} (${formatMes(mesAtual())})</span></div>
+
+    <div class="sectionTitle" style="font-size:14px;margin:6px 0 8px;">Configuração da mensalidade</div>
+    <div class="row">
+      <div class="field" style="flex:1"><label>Dia de vencimento</label><input id="pgDia" type="number" min="1" max="28" value="${cfg.diaVencimento||''}" placeholder="Ex: 5"></div>
+      <div class="field" style="flex:1"><label>Valor da mensalidade (R$)</label><input id="pgValor" value="${escapeAttr(cfg.valorMensalidade||'')}" placeholder="Ex: 150"></div>
+      <div class="field" style="flex:1"><label>Método padrão</label>
+        <select id="pgMetodo">
+          <option value="">-</option>
+          ${METODOS_PAGAMENTO.map(m=>`<option value="${escapeAttr(m)}" ${cfg.metodo===m?'selected':''}>${escapeHtml(m)}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="actions" style="justify-content:flex-start;margin-top:0;margin-bottom:20px;">
+      <button class="secondary small" id="pgSalvarConfig">Salvar configuração</button>
+    </div>
+
+    <div class="sectionTitle" style="font-size:14px;margin:6px 0 8px;">
+      <span>Histórico de pagamentos</span>
+      <button class="secondary small" id="pgNovoRegistro" style="margin-left:auto;">+ Registrar pagamento</button>
+    </div>
+    <div style="overflow-x:auto;">
+      <table>
+        <thead><tr><th>Mês</th><th>Status</th><th>Data pgto</th><th>Valor</th><th>Método</th><th>Nota fiscal</th><th></th></tr></thead>
+        <tbody>
+          ${registros.map(r=>`
+            <tr>
+              <td>${formatMes(r.mes)}</td>
+              <td><span class="tag ${r.status==='pago'?'green':'yellow'}">${r.status==='pago'?'✅ Pago':'🕒 Pendente'}</span></td>
+              <td>${r.dataPagamento?formatDate(r.dataPagamento):'-'}</td>
+              <td>${r.valor?'R$ '+escapeHtml(String(r.valor)):'-'}</td>
+              <td>${r.metodo?escapeHtml(r.metodo):'-'}</td>
+              <td>${r.notaFiscal ? `<a href="${r.notaFiscal.dataUrl}" target="_blank" rel="noopener" title="${escapeAttr(r.notaFiscal.name)}">📎 Ver</a>` : '-'}</td>
+              <td class="noprint"><button class="ghost small" data-edit-pg="${r.id}">Editar</button> <button class="danger small" data-del-pg="${r.id}">Excluir</button></td>
+            </tr>
+          `).join('') || `<tr><td colspan="7" class="empty">Nenhum pagamento registrado ainda.</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+    <div class="actions"><button class="secondary" id="pgFechar">Fechar</button></div>
+  `);
+
+  document.getElementById('pgFechar').onclick = ()=>{ closeModal(); render(); };
+
+  document.getElementById('pgSalvarConfig').onclick = ()=>{
+    const dia = parseInt(document.getElementById('pgDia').value, 10);
+    s.pagamento.diaVencimento = (dia>=1 && dia<=28) ? dia : null;
+    s.pagamento.valorMensalidade = document.getElementById('pgValor').value.trim();
+    s.pagamento.metodo = document.getElementById('pgMetodo').value;
+    saveDB();
+    showToast('Configuração de pagamento salva.', 'success');
+    openPagamentosModal(studentId);
+  };
+
+  document.getElementById('pgNovoRegistro').onclick = ()=> openRegistroPagamentoModal(s, null, ()=>openPagamentosModal(studentId));
+
+  document.querySelectorAll('[data-edit-pg]').forEach(el=>{
+    el.onclick = ()=>{
+      const r = s.pagamentos.find(x=>x.id===el.dataset.editPg);
+      openRegistroPagamentoModal(s, r, ()=>openPagamentosModal(studentId));
+    };
+  });
+
+  document.querySelectorAll('[data-del-pg]').forEach(el=>{
+    el.onclick = ()=>{
+      showConfirm('Excluir este registro de pagamento?', ()=>{
+        s.pagamentos = s.pagamentos.filter(x=>x.id!==el.dataset.delPg);
+        saveDB();
+        openPagamentosModal(studentId);
+      }, {danger:true, confirmLabel:'Excluir'});
+    };
+  });
+}
+
+function openRegistroPagamentoModal(s, registro, onDone){
+  const editing = !!registro;
+  const mesPadrao = editing ? registro.mes : mesAtual();
+  const metodoPadrao = editing ? (registro.metodo||'') : ((s.pagamento&&s.pagamento.metodo)||'');
+  const valorPadrao = editing ? (registro.valor||'') : ((s.pagamento&&s.pagamento.valorMensalidade)||'');
+  document.getElementById('modalBody').classList.add('wide');
+  openModal(`
+    <h3>${editing?'Editar':'Registrar'} pagamento — ${escapeHtml(s.nome)}</h3>
+    <div class="row">
+      <div class="field" style="flex:1"><label>Mês de referência</label><input id="rpMes" type="month" value="${escapeAttr(mesPadrao)}"></div>
+      <div class="field" style="flex:1"><label>Status</label>
+        <select id="rpStatus">
+          <option value="pago" ${(!editing || registro.status==='pago')?'selected':''}>✅ Pago</option>
+          <option value="pendente" ${editing && registro.status==='pendente'?'selected':''}>🕒 Pendente</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field" style="flex:1"><label>Data do pagamento</label><input id="rpData" type="date" value="${editing&&registro.dataPagamento?escapeAttr(registro.dataPagamento):''}"></div>
+      <div class="field" style="flex:1"><label>Valor (R$)</label><input id="rpValor" value="${escapeAttr(valorPadrao)}"></div>
+      <div class="field" style="flex:1"><label>Método</label>
+        <select id="rpMetodo">
+          <option value="">-</option>
+          ${METODOS_PAGAMENTO.map(m=>`<option value="${escapeAttr(m)}" ${metodoPadrao===m?'selected':''}>${escapeHtml(m)}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="field"><label>Nota fiscal / recibo (opcional — imagem ou PDF, máx. 4MB)</label>
+      <input type="file" accept="image/*,.pdf" id="rpArquivo">
+      <div class="meta" id="rpArquivoNome" style="margin-top:4px;">${editing && registro.notaFiscal ? '📎 '+escapeHtml(registro.notaFiscal.name) : ''}</div>
+    </div>
+    <div class="field"><label>Observações</label><textarea id="rpObs">${editing?escapeHtml(registro.obs||''):''}</textarea></div>
+    <div class="actions">
+      <button class="secondary" id="rpCancelar">Cancelar</button>
+      <button id="rpSave">Salvar</button>
+    </div>
+  `);
+
+  let arquivoData = (editing && registro.notaFiscal) ? registro.notaFiscal : null;
+
+  document.getElementById('rpArquivo').onchange = async ()=>{
+    const input = document.getElementById('rpArquivo');
+    const file = input.files[0];
+    if(!file) return;
+    if(file.size > 4*1024*1024){
+      showToast('Arquivo muito grande (máx. 4MB). Escolha um arquivo menor.', 'error');
+      input.value = '';
+      return;
+    }
+    try{
+      let dataUrl;
+      if(file.type.startsWith('image/')){
+        dataUrl = await resizeImageFile(file, 1200, 0.75);
+      } else {
+        dataUrl = await new Promise((resolve, reject)=>{
+          const reader = new FileReader();
+          reader.onload = ()=> resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
+      arquivoData = { name: file.name, dataUrl };
+      document.getElementById('rpArquivoNome').textContent = '📎 ' + arquivoData.name;
+    }catch(e){
+      showToast('Não foi possível anexar esse arquivo.', 'error');
+    }
+  };
+
+  document.getElementById('rpCancelar').onclick = ()=> onDone();
+
+  document.getElementById('rpSave').onclick = ()=>{
+    const mes = document.getElementById('rpMes').value;
+    if(!mes){ showToast('Selecione o mês de referência.', 'error'); return; }
+    const status = document.getElementById('rpStatus').value;
+    const dataPagamento = document.getElementById('rpData').value;
+    const valor = document.getElementById('rpValor').value.trim();
+    const metodo = document.getElementById('rpMetodo').value;
+    const obs = document.getElementById('rpObs').value.trim();
+    if(editing){
+      registro.mes = mes; registro.status = status; registro.dataPagamento = dataPagamento;
+      registro.valor = valor; registro.metodo = metodo; registro.obs = obs; registro.notaFiscal = arquivoData;
+    } else {
+      const duplicado = s.pagamentos.find(r=>r.mes===mes);
+      if(duplicado){ showToast('Já existe um registro para esse mês. Edite o registro existente.', 'error'); return; }
+      s.pagamentos.push({ id: uid(), mes, status, dataPagamento, valor, metodo, obs, notaFiscal: arquivoData });
+    }
+    saveDB();
+    showToast('Pagamento registrado.', 'success');
+    onDone();
   };
 }
 
