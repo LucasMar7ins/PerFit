@@ -52,6 +52,12 @@
   .tag.gray{background:rgba(148,163,184,.15);color:var(--muted);}
   .tag.yellow{background:rgba(251,191,36,.15);color:var(--yellow);}
   .tag.red{background:rgba(248,113,113,.15);color:var(--red);}
+  .agendaGrid{display:grid;grid-template-columns:repeat(7,minmax(150px,1fr));gap:10px;overflow-x:auto;}
+  .agendaCol{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;min-height:80px;}
+  .agendaColHeader{font-weight:600;font-size:13px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--line);text-align:center;}
+  .agendaSlot{background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:7px 9px;margin-bottom:7px;font-size:12px;cursor:pointer;}
+  .agendaSlot:hover{border-color:var(--accent);}
+  .agendaSlot .hora{font-weight:700;color:var(--accent);}
   .banner{border:1px solid var(--yellow);background:rgba(251,191,36,.08);border-radius:9px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--text);display:flex;align-items:center;gap:10px;}
   .compareCol{flex:1;min-width:0;}
   .compareCol table{font-size:13px;}
@@ -166,6 +172,7 @@
     <h1>Fit<span>Pro</span> Manager</h1>
     <div class="tab active" data-tab="alunos">👤 Alunos</div>
     <div class="tab" data-tab="pagamentos">💳 Pagamentos</div>
+    <div class="tab" data-tab="agenda">🗓️ Agenda</div>
     <div class="tab" data-tab="exercicios">🏋️ Banco de Exercícios</div>
     <div class="tab" data-tab="backup">💾 Backup</div>
   </nav>
@@ -547,6 +554,8 @@ function render(){
     main.innerHTML = state.studentId ? renderStudentDetail(state.studentId) : renderStudentsList();
   } else if(state.tab === 'pagamentos'){
     main.innerHTML = renderPagamentos();
+  } else if(state.tab === 'agenda'){
+    main.innerHTML = renderAgenda();
   } else if(state.tab === 'exercicios'){
     main.innerHTML = renderExercises();
   } else if(state.tab === 'backup'){
@@ -696,6 +705,101 @@ function renderPagamentos(){
       </table>
     </div>
   `;
+}
+
+// ---------- AGENDA SEMANAL ----------
+const DIAS_SEMANA = [
+  {key:'seg', label:'Segunda'},
+  {key:'ter', label:'Terça'},
+  {key:'qua', label:'Quarta'},
+  {key:'qui', label:'Quinta'},
+  {key:'sex', label:'Sexta'},
+  {key:'sab', label:'Sábado'},
+  {key:'dom', label:'Domingo'},
+];
+
+function renderAgenda(){
+  const alunos = db.students.filter(s=>(s.status||'ativo')==='ativo');
+  const colunas = DIAS_SEMANA.map(dia=>{
+    const slots = [];
+    alunos.forEach(s=>{
+      (s.agenda||[]).filter(a=>a.dia===dia.key).forEach(a=> slots.push({...a, aluno: s}));
+    });
+    slots.sort((a,b)=> (a.horario||'').localeCompare(b.horario||''));
+    return `
+      <div class="agendaCol">
+        <div class="agendaColHeader">${dia.label}</div>
+        ${slots.map(a=>`
+          <div class="agendaSlot" data-agenda-slot="${a.aluno.id}|${a.id}" title="Clique para editar ou remover">
+            <span class="hora">${escapeHtml(a.horario||'-')}</span> — ${escapeHtml(a.aluno.nome)}
+            ${a.obs ? `<div style="color:var(--muted);margin-top:2px;">${escapeHtml(a.obs)}</div>` : ''}
+          </div>
+        `).join('') || '<div class="meta" style="text-align:center;">-</div>'}
+      </div>
+    `;
+  }).join('');
+  return `
+    <h2>🗓️ Agenda semanal</h2>
+    <div class="sub">Horários de treino de cada aluno, organizados por dia da semana.</div>
+    <div class="row noprint" style="margin-bottom:18px;">
+      <button id="btnNovoHorario">+ Adicionar horário</button>
+    </div>
+    <div class="agendaGrid">${colunas}</div>
+  `;
+}
+
+function openAgendaSlotModal(studentId, slotId){
+  const alunos = db.students.filter(s=>(s.status||'ativo')==='ativo').slice().sort((a,b)=>a.nome.localeCompare(b.nome));
+  let s = studentId ? db.students.find(x=>x.id===studentId) : null;
+  const slot = (s && slotId) ? (s.agenda||[]).find(x=>x.id===slotId) : null;
+  const editing = !!slot;
+  openModal(`
+    <h3>${editing?'Editar':'Adicionar'} horário</h3>
+    <div class="field"><label>Aluno</label>
+      <select id="agAluno" ${editing?'disabled':''}>
+        ${!s?'<option value="">Selecione...</option>':''}
+        ${alunos.map(a=>`<option value="${a.id}" ${(s&&s.id===a.id)?'selected':''}>${escapeHtml(a.nome)}</option>`).join('')}
+      </select>
+    </div>
+    <div class="row">
+      <div class="field" style="flex:1"><label>Dia da semana</label>
+        <select id="agDia">
+          ${DIAS_SEMANA.map(d=>`<option value="${d.key}" ${editing&&slot.dia===d.key?'selected':''}>${d.label}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field" style="flex:1"><label>Horário</label><input id="agHorario" type="time" value="${editing?escapeAttr(slot.horario||''):''}"></div>
+    </div>
+    <div class="field"><label>Observação (opcional)</label><input id="agObs" value="${editing?escapeAttr(slot.obs||''):''}" placeholder="Ex: treino de pernas"></div>
+    <div class="actions">
+      ${editing?`<button class="danger" id="agDel" style="margin-right:auto;">Excluir</button>`:''}
+      <button class="secondary" onclick="closeModal()">Cancelar</button>
+      <button id="agSave">Salvar</button>
+    </div>
+  `);
+  document.getElementById('agSave').onclick = ()=>{
+    const alunoId = editing ? s.id : document.getElementById('agAluno').value;
+    if(!alunoId){ showToast('Selecione um aluno.', 'error'); return; }
+    const dia = document.getElementById('agDia').value;
+    const horario = document.getElementById('agHorario').value;
+    if(!horario){ showToast('Informe o horário.', 'error'); return; }
+    const obs = document.getElementById('agObs').value.trim();
+    const aluno = db.students.find(x=>x.id===alunoId);
+    if(!aluno.agenda) aluno.agenda = [];
+    if(editing){
+      slot.dia = dia; slot.horario = horario; slot.obs = obs;
+    } else {
+      aluno.agenda.push({id:uid(), dia, horario, obs});
+    }
+    saveDB(); closeModal(); render();
+  };
+  if(editing){
+    document.getElementById('agDel').onclick = ()=>{
+      showConfirm('Remover este horário da agenda?', ()=>{
+        s.agenda = s.agenda.filter(x=>x.id!==slot.id);
+        saveDB(); closeModal(); render();
+      }, {danger:true, confirmLabel:'Excluir'});
+    };
+  }
 }
 
 const METRICAS_EVOLUCAO = [
@@ -1253,6 +1357,16 @@ function bindEvents(){
 
   document.querySelectorAll('[data-manage-pagamento]').forEach(el=>{
     el.onclick = ()=> openPagamentosModal(el.dataset.managePagamento);
+  });
+
+  const btnNovoHorario = document.getElementById('btnNovoHorario');
+  if(btnNovoHorario) btnNovoHorario.onclick = ()=> openAgendaSlotModal(null, null);
+
+  document.querySelectorAll('[data-agenda-slot]').forEach(el=>{
+    el.onclick = ()=>{
+      const [studentId, slotId] = el.dataset.agendaSlot.split('|');
+      openAgendaSlotModal(studentId, slotId);
+    };
   });
 
   const btnNewFicha = document.getElementById('btnNewFicha');
