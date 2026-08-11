@@ -52,10 +52,19 @@
   .tag.gray{background:rgba(148,163,184,.15);color:var(--muted);}
   .tag.yellow{background:rgba(251,191,36,.15);color:var(--yellow);}
   .tag.red{background:rgba(248,113,113,.15);color:var(--red);}
-  .agendaGrid{display:grid;grid-template-columns:repeat(7,minmax(150px,1fr));gap:10px;overflow-x:auto;}
-  .agendaCol{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;min-height:80px;}
-  .agendaColHeader{font-weight:600;font-size:13px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--line);text-align:center;}
-  .agendaSlot{background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:7px 9px;margin-bottom:7px;font-size:12px;cursor:pointer;}
+  .calWrap{overflow-x:auto;}
+  .calGrid{display:grid;grid-template-columns:repeat(7,minmax(120px,1fr));gap:6px;min-width:760px;}
+  .calCabecalho{text-align:center;font-weight:600;font-size:12px;color:var(--muted);padding-bottom:4px;text-transform:uppercase;}
+  .calCell{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px;min-height:100px;display:flex;flex-direction:column;}
+  .calCellVazia{background:transparent;border:none;}
+  .calCellHoje{border-color:var(--accent);}
+  .calCellHeader{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+  .calNum{font-size:12px;color:var(--muted);font-weight:600;}
+  .calCellHoje .calNum{color:var(--accent);}
+  .calAdd{cursor:pointer;color:var(--accent);font-weight:700;font-size:15px;line-height:1;padding:0 4px;}
+  .calAdd:hover{color:var(--text);}
+  .calCellBody{display:flex;flex-direction:column;gap:4px;overflow-y:auto;max-height:150px;}
+  .agendaSlot{background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:5px 7px;font-size:11px;cursor:pointer;}
   .agendaSlot:hover{border-color:var(--accent);}
   .agendaSlot .hora{font-weight:700;color:var(--accent);}
   .banner{border:1px solid var(--yellow);background:rgba(251,191,36,.08);border-radius:9px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--text);display:flex;align-items:center;gap:10px;}
@@ -381,7 +390,7 @@ function saveDB(){ localStorage.setItem(DB_KEY, JSON.stringify(db)); }
 function uid(){ return Math.random().toString(36).slice(2,10); }
 
 let db = loadDB();
-let state = { tab:'alunos', studentId:null, chartMetric:'peso', studentFilter:'ativos', collapsedSections: { anamnese:true, evolucao:true, avaliacoes:true, fichas:false, cargas:false } };
+let state = { tab:'alunos', studentId:null, chartMetric:'peso', studentFilter:'ativos', collapsedSections: { anamnese:true, evolucao:true, avaliacoes:true, fichas:false, cargas:false }, agendaAno:null, agendaMes:null };
 
 // ---------- REAVALIAÇÃO (lembrete) ----------
 const REAVAL_DIAS_LIMITE = 45; // ~6-7 semanas sem atualizar medidas
@@ -726,52 +735,95 @@ function diaSemanaFromISODate(iso){
   return map[d.getDay()];
 }
 
+const NOMES_MES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const DIAS_SEMANA_ORDEM = ['seg','ter','qua','qui','sex','sab','dom'];
+
 function renderAgenda(){
+  const hoje = new Date();
+  if(state.agendaAno==null) state.agendaAno = hoje.getFullYear();
+  if(state.agendaMes==null) state.agendaMes = hoje.getMonth();
+  const ano = state.agendaAno, mes = state.agendaMes;
+
   const alunos = db.students.filter(s=>(s.status||'ativo')==='ativo');
-  const hojeISO = new Date().toISOString().slice(0,10);
-  const colunas = DIAS_SEMANA.map(dia=>{
-    const slots = [];
+  const hojeISO = hoje.toISOString().slice(0,10);
+
+  const primeiroDia = new Date(ano, mes, 1);
+  const totalDias = new Date(ano, mes+1, 0).getDate();
+  const offsetInicio = (primeiroDia.getDay()+6)%7; // 0 = segunda-feira
+
+  const celulasDias = [];
+  for(let i=0;i<offsetInicio;i++) celulasDias.push(null);
+  for(let d=1; d<=totalDias; d++) celulasDias.push(d);
+  while(celulasDias.length % 7 !== 0) celulasDias.push(null);
+
+  function slotsDoDia(dataISO, diaKey){
+    const out = [];
     alunos.forEach(s=>{
       (s.agenda||[]).forEach(a=>{
         if(a.tipo==='unico'){
-          if(!a.data || a.data < hojeISO) return;
-          if(diaSemanaFromISODate(a.data) !== dia.key) return;
-        } else {
-          if(a.dia !== dia.key) return;
+          if(a.data===dataISO) out.push({...a, aluno:s});
+        } else if(a.dia===diaKey){
+          out.push({...a, aluno:s});
         }
-        slots.push({...a, aluno: s});
       });
     });
-    slots.sort((a,b)=> (a.horario||'').localeCompare(b.horario||''));
+    out.sort((a,b)=> (a.horario||'').localeCompare(b.horario||''));
+    return out;
+  }
+
+  const cabecalho = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'].map(l=>`<div class="calCabecalho">${l}</div>`).join('');
+
+  const celulas = celulasDias.map((d, idx)=>{
+    if(d===null) return `<div class="calCell calCellVazia"></div>`;
+    const dataISO = `${ano}-${String(mes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const diaKey = DIAS_SEMANA_ORDEM[idx % 7];
+    const slots = slotsDoDia(dataISO, diaKey);
+    const ehHoje = dataISO === hojeISO;
     return `
-      <div class="agendaCol">
-        <div class="agendaColHeader">${dia.label}</div>
-        ${slots.map(a=>`
-          <div class="agendaSlot" data-agenda-slot="${a.aluno.id}|${a.id}" title="Clique para editar ou remover">
-            <span class="hora">${escapeHtml(a.horario||'-')}</span> — ${escapeHtml(a.aluno.nome)}
-            ${a.tipo==='unico' ? `<div style="color:var(--accent2);margin-top:2px;">📅 ${formatDate(a.data)} (única)</div>` : ''}
-            ${a.obs ? `<div style="color:var(--muted);margin-top:2px;">${escapeHtml(a.obs)}</div>` : ''}
-          </div>
-        `).join('') || '<div class="meta" style="text-align:center;">-</div>'}
+      <div class="calCell ${ehHoje?'calCellHoje':''}">
+        <div class="calCellHeader">
+          <span class="calNum">${d}</span>
+          <span class="calAdd noprint" data-cal-add="${dataISO}" title="Adicionar horário neste dia">+</span>
+        </div>
+        <div class="calCellBody">
+          ${slots.map(a=>`
+            <div class="agendaSlot" data-agenda-slot="${a.aluno.id}|${a.id}" title="Clique para editar ou remover">
+              <span class="hora">${escapeHtml(a.horario||'-')}</span> ${escapeHtml(a.aluno.nome)}
+              ${a.tipo==='unico' ? `<div style="color:var(--accent2);">única</div>` : ''}
+            </div>
+          `).join('')}
+        </div>
       </div>
     `;
   }).join('');
+
   return `
-    <h2>🗓️ Agenda semanal</h2>
-    <div class="sub">Horários de treino de cada aluno, organizados por dia da semana.</div>
-    <div class="row noprint" style="margin-bottom:18px;">
-      <button id="btnNovoHorario">+ Adicionar horário</button>
+    <h2>🗓️ Agenda</h2>
+    <div class="sub">Calendário com os horários de treino de cada aluno.</div>
+    <div class="row noprint" style="margin-bottom:14px;align-items:center;">
+      <button class="secondary small" id="agPrevMes">&larr;</button>
+      <strong style="min-width:170px;text-align:center;">${NOMES_MES[mes]} de ${ano}</strong>
+      <button class="secondary small" id="agNextMes">&rarr;</button>
+      <button class="ghost small" id="agHojeBtn">Hoje</button>
+      <button id="btnNovoHorario" style="margin-left:auto;">+ Adicionar horário</button>
     </div>
-    <div class="agendaGrid">${colunas}</div>
+    <div class="calWrap">
+      <div class="calGrid">
+        ${cabecalho}
+        ${celulas}
+      </div>
+    </div>
   `;
 }
 
-function openAgendaSlotModal(studentId, slotId){
+function openAgendaSlotModal(studentId, slotId, presetData){
   const alunos = db.students.filter(s=>(s.status||'ativo')==='ativo').slice().sort((a,b)=>a.nome.localeCompare(b.nome));
   let s = studentId ? db.students.find(x=>x.id===studentId) : null;
   const slot = (s && slotId) ? (s.agenda||[]).find(x=>x.id===slotId) : null;
   const editing = !!slot;
-  const tipoAtual = editing ? (slot.tipo || 'recorrente') : 'recorrente';
+  const tipoAtual = editing ? (slot.tipo || 'recorrente') : (presetData ? 'unico' : 'recorrente');
+  const diaPadrao = editing ? slot.dia : (presetData ? diaSemanaFromISODate(presetData) : DIAS_SEMANA[0].key);
+  const dataPadrao = editing ? (slot.data||'') : (presetData||'');
   openModal(`
     <h3>${editing?'Editar':'Adicionar'} horário</h3>
     <div class="field"><label>Aluno</label>
@@ -789,11 +841,11 @@ function openAgendaSlotModal(studentId, slotId){
     <div class="row">
       <div class="field" style="flex:1" id="agDiaWrap"><label>Dia da semana</label>
         <select id="agDia">
-          ${DIAS_SEMANA.map(d=>`<option value="${d.key}" ${editing&&slot.dia===d.key?'selected':''}>${d.label}</option>`).join('')}
+          ${DIAS_SEMANA.map(d=>`<option value="${d.key}" ${diaPadrao===d.key?'selected':''}>${d.label}</option>`).join('')}
         </select>
       </div>
       <div class="field" style="flex:1" id="agDataWrap"><label>Data</label>
-        <input id="agData" type="date" value="${editing&&slot.data?escapeAttr(slot.data):''}">
+        <input id="agData" type="date" value="${escapeAttr(dataPadrao)}">
       </div>
       <div class="field" style="flex:1"><label>Horário</label><input id="agHorario" type="time" value="${editing?escapeAttr(slot.horario||''):''}"></div>
     </div>
@@ -1408,11 +1460,39 @@ function bindEvents(){
   if(btnNovoHorario) btnNovoHorario.onclick = ()=> openAgendaSlotModal(null, null);
 
   document.querySelectorAll('[data-agenda-slot]').forEach(el=>{
-    el.onclick = ()=>{
+    el.onclick = (ev)=>{
+      ev.stopPropagation();
       const [studentId, slotId] = el.dataset.agendaSlot.split('|');
       openAgendaSlotModal(studentId, slotId);
     };
   });
+
+  document.querySelectorAll('[data-cal-add]').forEach(el=>{
+    el.onclick = (ev)=>{
+      ev.stopPropagation();
+      openAgendaSlotModal(null, null, el.dataset.calAdd);
+    };
+  });
+
+  const agPrevMes = document.getElementById('agPrevMes');
+  if(agPrevMes) agPrevMes.onclick = ()=>{
+    state.agendaMes--;
+    if(state.agendaMes < 0){ state.agendaMes = 11; state.agendaAno--; }
+    render();
+  };
+  const agNextMes = document.getElementById('agNextMes');
+  if(agNextMes) agNextMes.onclick = ()=>{
+    state.agendaMes++;
+    if(state.agendaMes > 11){ state.agendaMes = 0; state.agendaAno++; }
+    render();
+  };
+  const agHojeBtn = document.getElementById('agHojeBtn');
+  if(agHojeBtn) agHojeBtn.onclick = ()=>{
+    const hoje = new Date();
+    state.agendaAno = hoje.getFullYear();
+    state.agendaMes = hoje.getMonth();
+    render();
+  };
 
   const btnNewFicha = document.getElementById('btnNewFicha');
   if(btnNewFicha) btnNewFicha.onclick = ()=> openFichaModal();
