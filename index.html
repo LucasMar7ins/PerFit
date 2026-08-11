@@ -725,6 +725,8 @@ function renderPagamentos(){
   const linhas = alunos.map(s=>{
     const situacao = statusPagamentoAluno(s);
     const cfg = s.pagamento || {};
+    const mensagemCobranca = `Oi ${s.nome}! Passando pra lembrar que a mensalidade${cfg.valorMensalidade?(' de R$ '+cfg.valorMensalidade):''} está em aberto. Pode verificar quando der? 🙂`;
+    const linkCobranca = (situacao.status==='atrasado' && s.whatsapp) ? whatsappLink(s.whatsapp, mensagemCobranca) : null;
     return `
       <tr>
         <td>${escapeHtml(s.nome)}</td>
@@ -732,7 +734,10 @@ function renderPagamentos(){
         <td>${cfg.diaVencimento ? 'Todo dia '+cfg.diaVencimento : '-'}</td>
         <td>${cfg.valorMensalidade ? 'R$ '+escapeHtml(String(cfg.valorMensalidade)) : '-'}</td>
         <td>${cfg.metodo ? escapeHtml(cfg.metodo) : '-'}</td>
-        <td class="noprint"><button class="secondary small" data-manage-pagamento="${s.id}">Gerenciar</button></td>
+        <td class="noprint">
+          <button class="secondary small" data-manage-pagamento="${s.id}">Gerenciar</button>
+          ${linkCobranca ? `<a href="${linkCobranca}" target="_blank" rel="noopener" class="ghost small" style="display:inline-block;padding:5px 10px;font-size:12px;border:1px solid var(--accent);color:var(--accent);border-radius:7px;text-decoration:none;margin-left:4px;">💬 Cobrar</a>` : ''}
+        </td>
       </tr>`;
   }).join('');
   const emDia = alunos.filter(s=>statusPagamentoAluno(s).status==='em_dia').length;
@@ -1332,12 +1337,13 @@ function renderStudentDetail(id){
   return `
     <span class="backBtn noprint" id="backToStudents">&larr; Voltar para Alunos</span>
     <h2>${escapeHtml(s.nome)} ${(s.status||'ativo')==='pausado'?'<span class="tag gray">PAUSADO</span>':''} <span class="tag ${statusPagamentoClass(statusPagamentoAluno(s).status)}">${statusPagamentoLabel(statusPagamentoAluno(s).status)}</span></h2>
-    <div class="sub">${escapeHtml(s.objetivo||'')} ${s.nivel? ' • Nível: '+escapeHtml(s.nivel):''}</div>
+    <div class="sub">${escapeHtml(s.objetivo||'')} ${s.nivel? ' • Nível: '+escapeHtml(s.nivel):''} ${s.whatsapp?` • <a href="${whatsappLink(s.whatsapp)}" target="_blank" rel="noopener" style="color:var(--green);text-decoration:none;">💬 ${escapeHtml(s.whatsapp)}</a>`:''}</div>
     <div class="row noprint" style="margin-bottom:18px;">
       <button id="btnNewFicha">+ Nova ficha de treino</button>
       <button class="secondary" id="btnEditStudent">Editar aluno</button>
       <button class="secondary" id="btnToggleStatus">${(s.status||'ativo')==='pausado'?'Reativar aluno':'Pausar aluno'}</button>
       <button class="secondary" id="btnPagamento">💳 Pagamento</button>
+      ${s.whatsapp?`<button class="ghost" onclick="window.open('${whatsappLink(s.whatsapp)}','_blank')">💬 Chamar no WhatsApp</button>`:''}
       <button class="ghost" onclick="window.print()">Imprimir / Exportar PDF</button>
       <button class="danger" id="btnDelStudent">Excluir aluno</button>
     </div>
@@ -1910,6 +1916,7 @@ function openStudentModal(student){
         <option value="F" ${editing&&student.sexo==='F'?'selected':''}>Feminino</option>
       </select>
     </div>
+    <div class="field"><label>WhatsApp</label><input id="mWhatsapp" value="${editing?escapeAttr(student.whatsapp||''):''}" placeholder="Ex: (11) 91234-5678"></div>
     <div class="field"><label>Status</label>
       <select id="mStatus">
         <option value="ativo" ${(!editing || (student.status||'ativo')==='ativo')?'selected':''}>Ativo</option>
@@ -1927,11 +1934,12 @@ function openStudentModal(student){
     const objetivo = document.getElementById('mObjetivo').value.trim();
     const nivel = document.getElementById('mNivel').value;
     const sexo = document.getElementById('mSexo').value;
+    const whatsapp = document.getElementById('mWhatsapp').value.trim();
     const status = document.getElementById('mStatus').value;
     if(editing){
-      student.nome=nome; student.objetivo=objetivo; student.nivel=nivel; student.sexo=sexo; student.status=status;
+      student.nome=nome; student.objetivo=objetivo; student.nivel=nivel; student.sexo=sexo; student.whatsapp=whatsapp; student.status=status;
     } else {
-      const ns = {id:uid(),nome,objetivo,nivel,sexo,status,fichas:[]};
+      const ns = {id:uid(),nome,objetivo,nivel,sexo,whatsapp,status,fichas:[]};
       db.students.push(ns);
       state.studentId = ns.id;
     }
@@ -2660,6 +2668,15 @@ function escapeHtml(str){
   return String(str??'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
 function escapeAttr(str){ return escapeHtml(str); }
+
+function whatsappLink(numero, mensagem){
+  if(!numero) return null;
+  let digits = String(numero).replace(/\D/g,'');
+  if(!digits) return null;
+  if(digits.length <= 11) digits = '55' + digits; // assume Brasil se não vier com código do país
+  const texto = mensagem ? `?text=${encodeURIComponent(mensagem)}` : '';
+  return `https://wa.me/${digits}${texto}`;
+}
 
 render();
 </script>
