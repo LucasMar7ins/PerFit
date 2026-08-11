@@ -72,6 +72,27 @@
   .agendaSlot-faltou{background:rgba(248,113,113,.20);border-color:var(--red);}
   .agendaSlot-reposicao{background:rgba(251,191,36,.20);border-color:var(--yellow);}
   .agendaSlot-bloqueio{background:rgba(148,163,184,.12);border-color:var(--line);color:var(--muted);font-style:italic;}
+
+  /* ---------- MODO TREINO AO VIVO ---------- */
+  .liveHeader{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:16px;border-bottom:1px solid var(--line);margin-bottom:16px;}
+  .liveAlunoNome{font-size:22px;font-weight:700;}
+  .liveFichaNome{color:var(--muted);font-size:14px;margin-top:2px;}
+  .liveProgressWrap{margin-bottom:24px;}
+  .liveProgressBar{height:10px;background:var(--panel2);border-radius:20px;overflow:hidden;}
+  .liveProgressFill{height:100%;background:var(--accent);transition:width .3s ease;}
+  .liveProgressLabel{margin-top:6px;font-size:13px;color:var(--muted);}
+  .liveList{display:flex;flex-direction:column;gap:14px;}
+  .liveCard{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;}
+  .liveCardFeito{border-color:var(--green);background:rgba(52,211,153,.06);}
+  .liveCardTop{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px;}
+  .liveExNome{font-size:19px;font-weight:700;}
+  .liveExGrupo{color:var(--muted);font-size:13px;margin-top:2px;}
+  .liveExGrupo a{color:var(--accent);text-decoration:none;}
+  .liveCheckBtn{flex-shrink:0;width:52px;height:52px;border-radius:50%;background:var(--panel2);border:2px solid var(--line);color:var(--text);font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .liveCheckBtnOn{background:rgba(52,211,153,.18);border-color:var(--green);}
+  .liveFieldsRow{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px;}
+  .liveField label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;}
+  .liveInput{width:100%;font-size:18px;padding:10px;text-align:center;border-radius:8px;}
   .legendDot{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;vertical-align:middle;}
   .banner{border:1px solid var(--yellow);background:rgba(251,191,36,.08);border-radius:9px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--text);display:flex;align-items:center;gap:10px;}
   .compareCol{flex:1;min-width:0;}
@@ -168,6 +189,7 @@
     .studentList{grid-template-columns:1fr;}
     .exRowBottom{grid-template-columns:1fr 1fr;}
     .photoUploadRow{grid-template-columns:1fr;}
+    .liveFieldsRow{grid-template-columns:1fr 1fr;}
   }
 
   @media print{
@@ -397,7 +419,7 @@ function saveDB(){ localStorage.setItem(DB_KEY, JSON.stringify(db)); }
 function uid(){ return Math.random().toString(36).slice(2,10); }
 
 let db = loadDB();
-let state = { tab:'alunos', studentId:null, chartMetric:'peso', studentFilter:'ativos', collapsedSections: { anamnese:true, evolucao:true, avaliacoes:true, fichas:false, cargas:false }, agendaView:null, agendaRef:null, printRecibo:null };
+let state = { tab:'alunos', studentId:null, chartMetric:'peso', studentFilter:'ativos', collapsedSections: { anamnese:true, evolucao:true, avaliacoes:true, fichas:false, cargas:false }, agendaView:null, agendaRef:null, printRecibo:null, treinoAoVivo:null };
 
 // ---------- REAVALIAÇÃO (lembrete) ----------
 const REAVAL_DIAS_LIMITE = 45; // ~6-7 semanas sem atualizar medidas
@@ -559,16 +581,21 @@ document.querySelectorAll('nav .tab').forEach(t=>{
     state.studentId = null;
     state.printFicha = null;
     state.printRecibo = null;
+    state.treinoAoVivo = null;
     render();
   });
 });
 
 function render(){
   const main = document.getElementById('main');
+  const navEl = document.querySelector('nav');
+  if(navEl) navEl.style.display = state.treinoAoVivo ? 'none' : '';
   if(state.printFicha){
     main.innerHTML = renderFichaPrint(state.printFicha.studentId, state.printFicha.fichaId);
   } else if(state.printRecibo){
     main.innerHTML = renderReciboPrint(state.printRecibo.studentId, state.printRecibo.registroId);
+  } else if(state.treinoAoVivo){
+    main.innerHTML = renderTreinoAoVivo(state.treinoAoVivo.studentId, state.treinoAoVivo.fichaId);
   } else if(state.tab === 'alunos'){
     main.innerHTML = state.studentId ? renderStudentDetail(state.studentId) : renderStudentsList();
   } else if(state.tab === 'pagamentos'){
@@ -638,6 +665,51 @@ function renderReciboPrint(studentId, registroId){
       </table>
       <div class="meta" style="margin-top:20px;">Recibo referente à prestação de serviços de personal trainer.</div>
       <div class="meta" style="margin-top:6px;">Emitido em ${formatDate(hoje)} • FitPro Manager</div>
+    </div>
+  `;
+}
+
+// ---------- MODO TREINO AO VIVO ----------
+function renderTreinoAoVivo(studentId, fichaId){
+  const s = db.students.find(x=>x.id===studentId);
+  const f = s && s.fichas.find(x=>x.id===fichaId);
+  if(!s || !f){
+    return `<div class="empty">Ficha não encontrada.</div><div class="row" style="margin-top:14px;"><button class="secondary" id="sairTreinoAoVivo">&larr; Voltar</button></div>`;
+  }
+  const total = f.exercicios.length;
+  const feitos = f.exercicios.filter(e=>e.feito).length;
+  const pct = total>0 ? Math.round((feitos/total)*100) : 0;
+  return `
+    <div class="liveHeader">
+      <div>
+        <div class="liveAlunoNome">${escapeHtml(s.nome)}</div>
+        <div class="liveFichaNome">${escapeHtml(f.nome||('Treino '+f.letra))} • Treino ${escapeHtml(f.letra)}</div>
+      </div>
+      <button class="secondary" id="sairTreinoAoVivo">✕ Sair</button>
+    </div>
+    <div class="liveProgressWrap">
+      <div class="liveProgressBar"><div class="liveProgressFill" style="width:${pct}%;"></div></div>
+      <div class="liveProgressLabel">${feitos} de ${total} concluído(s)</div>
+    </div>
+    <div class="liveList">
+      ${f.exercicios.map(e=>`
+        <div class="liveCard ${e.feito?'liveCardFeito':''}">
+          <div class="liveCardTop">
+            <div>
+              <div class="liveExNome">${escapeHtml(e.nome)}</div>
+              <div class="liveExGrupo">${escapeHtml(e.grupo||'-')}${e.video?` • <a href="${escapeAttr(e.video)}" target="_blank" rel="noopener">🎥 Vídeo</a>`:''}</div>
+            </div>
+            <button class="liveCheckBtn ${e.feito?'liveCheckBtnOn':''}" data-live-toggle="${f.id}|${e.id}" title="Marcar como feito">${e.feito?'✅':'○'}</button>
+          </div>
+          <div class="liveFieldsRow">
+            <div class="liveField"><label>Séries</label><input class="liveInput" data-live-field="${f.id}|${e.id}|series" value="${escapeAttr(e.series||'')}" placeholder="-"></div>
+            <div class="liveField"><label>Reps</label><input class="liveInput" data-live-field="${f.id}|${e.id}|reps" value="${escapeAttr(e.reps||'')}" placeholder="-"></div>
+            <div class="liveField"><label>Carga</label><input class="liveInput" data-live-field="${f.id}|${e.id}|obs" value="${escapeAttr(e.obs||'')}" placeholder="-"></div>
+            <div class="liveField"><label>Descanso</label><input class="liveInput" data-live-field="${f.id}|${e.id}|descanso" value="${escapeAttr(e.descanso||'')}" placeholder="-"></div>
+          </div>
+          <button class="ghost small" data-open-note="${f.id}|${e.id}" style="${e.notas?'border-color:var(--yellow);color:var(--yellow);':''}">${e.notas?'📝 Ver observação':'📝 Observação'}</button>
+        </div>
+      `).join('')}
     </div>
   `;
 }
@@ -1475,6 +1547,7 @@ function renderStudentDetail(id){
           <span class="tag gray" id="volTotal-${f.id}">🏋️ Volume: ${formatVolume(volumeTotalFicha(f))}kg</span>
         </div>
         <div class="row noprint">
+          ${f.ativa ? `<button class="small" data-live-start="${f.id}">▶️ Iniciar treino</button>` : ''}
           <button class="secondary small" data-edit-ficha="${f.id}">Editar</button>
           <button class="ghost small" data-duplicate-ficha="${f.id}">Duplicar / Alternar</button>
           ${s.fichas.length>1 ? `<button class="ghost small" data-compare-ficha="${f.id}">🔀 Comparar</button>` : ''}
@@ -1994,6 +2067,35 @@ function bindEvents(){
   });
   const backFromPrint = document.getElementById('backFromPrint');
   if(backFromPrint) backFromPrint.onclick = ()=>{ state.printFicha = null; render(); };
+
+  document.querySelectorAll('[data-live-start]').forEach(el=>{
+    el.onclick = ()=>{
+      state.treinoAoVivo = { studentId: state.studentId, fichaId: el.dataset.liveStart };
+      render();
+    };
+  });
+  const sairTreinoAoVivo = document.getElementById('sairTreinoAoVivo');
+  if(sairTreinoAoVivo) sairTreinoAoVivo.onclick = ()=>{ state.treinoAoVivo = null; render(); };
+  document.querySelectorAll('[data-live-toggle]').forEach(el=>{
+    el.onclick = ()=>{
+      const [fichaId, execId] = el.dataset.liveToggle.split('|');
+      const s = db.students.find(x=>x.id===state.treinoAoVivo.studentId);
+      const f = s.fichas.find(x=>x.id===fichaId);
+      const ex = f.exercicios.find(x=>x.id===execId);
+      ex.feito = !ex.feito;
+      saveDB(); render();
+    };
+  });
+  document.querySelectorAll('[data-live-field]').forEach(el=>{
+    el.addEventListener('change', ()=>{
+      const [fichaId, execId, field] = el.dataset.liveField.split('|');
+      const s = db.students.find(x=>x.id===state.treinoAoVivo.studentId);
+      const f = s.fichas.find(x=>x.id===fichaId);
+      const ex = f.exercicios.find(x=>x.id===execId);
+      ex[field] = el.value;
+      saveDB();
+    });
+  });
   const backFromRecibo = document.getElementById('backFromRecibo');
   if(backFromRecibo) backFromRecibo.onclick = ()=>{
     state.printRecibo = null;
