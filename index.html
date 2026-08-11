@@ -3160,7 +3160,13 @@ function renderLoginScreen(mensagem, emailPreenchido, tipoMensagem){
       <div class="card" style="text-align:left;">
         ${mensagem ? `<div class="banner" style="margin-bottom:14px;border-color:${corMensagem};">${escapeHtml(mensagem)}</div>` : ''}
         <div class="field"><label>E-mail</label><input id="loginEmail" type="email" placeholder="seuemail@exemplo.com" value="${emailPreenchido?escapeAttr(emailPreenchido):''}"></div>
-        <div class="field"><label>Senha</label><input id="loginSenha" type="password" placeholder="Mínimo 6 caracteres"></div>
+        <div class="field">
+          <label>Senha</label>
+          <div style="position:relative;">
+            <input id="loginSenha" type="password" placeholder="Mínimo 6 caracteres" style="padding-right:38px;">
+            <button type="button" id="toggleSenhaVisivel" title="Mostrar/ocultar senha" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--muted);cursor:pointer;padding:4px 6px;font-size:15px;line-height:1;">👁️</button>
+          </div>
+        </div>
         <div class="actions" style="justify-content:space-between;">
           <button class="secondary" id="btnCriarConta">Criar conta</button>
           <button id="btnEntrar">Entrar</button>
@@ -3175,6 +3181,13 @@ function renderLoginScreen(mensagem, emailPreenchido, tipoMensagem){
     email: document.getElementById('loginEmail').value.trim(),
     senha: document.getElementById('loginSenha').value,
   });
+  document.getElementById('toggleSenhaVisivel').onclick = ()=>{
+    const campo = document.getElementById('loginSenha');
+    const toggle = document.getElementById('toggleSenhaVisivel');
+    const visivel = campo.type === 'text';
+    campo.type = visivel ? 'password' : 'text';
+    toggle.textContent = visivel ? '👁️' : '🙈';
+  };
   document.getElementById('btnEntrar').onclick = ()=>{
     const {email, senha} = lerCampos();
     if(!email || !senha){ renderLoginScreen('Preencha e-mail e senha.', email); return; }
