@@ -837,6 +837,49 @@ function itensDoDia(alunos, dataISO, diaKey){
     .sort((a,b)=> (a.horario||'').localeCompare(b.horario||''));
 }
 
+// ---------- CONFLITO DE HORÁRIO ----------
+function itensParaConflito(dia, data, tipo){
+  const alunosAtivos = db.students.filter(s=>(s.status||'ativo')==='ativo');
+  if(tipo==='unico'){
+    return itensDoDia(alunosAtivos, data, dia);
+  }
+  // recorrente: só compara com outros itens recorrentes do mesmo dia da semana
+  // (comparar com itens únicos exigiria checar infinitas datas futuras)
+  const out = [];
+  alunosAtivos.forEach(s=>{
+    (s.agenda||[]).forEach(a=>{
+      if((a.tipo||'recorrente')==='recorrente' && a.dia===dia) out.push({...a, _tipoItem:'aluno', aluno:s});
+    });
+  });
+  (db.bloqueios||[]).forEach(b=>{
+    if((b.tipo||'recorrente')==='recorrente' && b.dia===dia) out.push({...b, _tipoItem:'bloqueio', horario:b.horarioInicio||''});
+  });
+  return out;
+}
+function horariosConflitam(iniA, fimA, iniB, fimB){
+  if(!iniA || !iniB) return false;
+  const temFaixaA = !!fimA, temFaixaB = !!fimB;
+  if(!temFaixaA && !temFaixaB) return iniA === iniB;
+  if(temFaixaA && !temFaixaB) return iniB >= iniA && iniB < fimA;
+  if(!temFaixaA && temFaixaB) return iniA >= iniB && iniA < fimB;
+  return iniA < fimB && iniB < fimA;
+}
+function encontrarConflitos({dia, data, tipo, horarioInicio, horarioFim, excluirTipoItem, excluirId}){
+  const candidatos = itensParaConflito(dia, data, tipo);
+  return candidatos.filter(item=>{
+    if(excluirId && item.id===excluirId && item._tipoItem===excluirTipoItem) return false;
+    const itemInicio = item._tipoItem==='bloqueio' ? (item.horarioInicio||'') : (item.horario||'');
+    const itemFim = item._tipoItem==='bloqueio' ? (item.horarioFim||'') : '';
+    return horariosConflitam(horarioInicio, horarioFim, itemInicio, itemFim);
+  });
+}
+function descreverConflito(item){
+  if(item._tipoItem==='bloqueio'){
+    return `🚫 ${item.titulo||'Indisponível'} (${item.horarioInicio}${item.horarioFim?'–'+item.horarioFim:''})`;
+  }
+  return `${item.aluno.nome} (${item.horario})`;
+}
+
 function slotChipHtml(a, dataISO){
   const statusClass = a.presencaStatus ? ' agendaSlot-'+a.presencaStatus : '';
   const quandoTexto = dataISO===isoHoje() ? 'hoje' : `no dia ${formatDate(dataISO)}`;
@@ -1069,12 +1112,21 @@ function openBloqueioModal(bloqueioId, presetData){
       dia = diaSemanaFromISODate(data);
     }
     if(!db.bloqueios) db.bloqueios = [];
-    if(editing){
-      bloqueio.titulo=titulo; bloqueio.tipo=tipo; bloqueio.dia=dia; bloqueio.data=data; bloqueio.horarioInicio=horarioInicio; bloqueio.horarioFim=horarioFim;
+    const salvar = ()=>{
+      if(editing){
+        bloqueio.titulo=titulo; bloqueio.tipo=tipo; bloqueio.dia=dia; bloqueio.data=data; bloqueio.horarioInicio=horarioInicio; bloqueio.horarioFim=horarioFim;
+      } else {
+        db.bloqueios.push({id:uid(), titulo, tipo, dia, data, horarioInicio, horarioFim});
+      }
+      saveDB(); closeModal(); render();
+    };
+    const conflitos = encontrarConflitos({dia, data, tipo, horarioInicio, horarioFim, excluirTipoItem:'bloqueio', excluirId: editing?bloqueio.id:null});
+    if(conflitos.length){
+      const lista = conflitos.map(descreverConflito).join(', ');
+      showConfirm(`Já existe nesse horário: ${lista}. Deseja bloquear mesmo assim?`, salvar, {confirmLabel:'Bloquear mesmo assim'});
     } else {
-      db.bloqueios.push({id:uid(), titulo, tipo, dia, data, horarioInicio, horarioFim});
+      salvar();
     }
-    saveDB(); closeModal(); render();
   };
   if(editing){
     document.getElementById('blDel').onclick = ()=>{
@@ -1152,12 +1204,21 @@ function openAgendaSlotModal(studentId, slotId, presetData){
     }
     const aluno = db.students.find(x=>x.id===alunoId);
     if(!aluno.agenda) aluno.agenda = [];
-    if(editing){
-      slot.tipo = tipo; slot.dia = dia; slot.data = data; slot.horario = horario; slot.obs = obs;
+    const salvar = ()=>{
+      if(editing){
+        slot.tipo = tipo; slot.dia = dia; slot.data = data; slot.horario = horario; slot.obs = obs;
+      } else {
+        aluno.agenda.push({id:uid(), tipo, dia, data, horario, obs});
+      }
+      saveDB(); closeModal(); render();
+    };
+    const conflitos = encontrarConflitos({dia, data, tipo, horarioInicio:horario, horarioFim:'', excluirTipoItem:'aluno', excluirId: editing?slot.id:null});
+    if(conflitos.length){
+      const lista = conflitos.map(descreverConflito).join(', ');
+      showConfirm(`Já existe nesse horário: ${lista}. Deseja salvar mesmo assim?`, salvar, {confirmLabel:'Salvar mesmo assim'});
     } else {
-      aluno.agenda.push({id:uid(), tipo, dia, data, horario, obs});
+      salvar();
     }
-    saveDB(); closeModal(); render();
   };
   if(editing){
     document.getElementById('agDel').onclick = ()=>{
