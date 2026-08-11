@@ -1567,6 +1567,7 @@ function renderStudentDetail(id){
         </div>
         <div class="row noprint">
           ${f.ativa ? `<button class="small" data-live-start="${f.id}">▶️ Iniciar treino</button>` : ''}
+          ${(feitos===total && total>0) ? `<button class="small" style="background:var(--green);" data-resumo-treino="${f.id}">📩 Enviar resumo pro aluno</button>` : ''}
           <button class="secondary small" data-edit-ficha="${f.id}">Editar</button>
           <button class="ghost small" data-duplicate-ficha="${f.id}">Duplicar / Alternar</button>
           ${s.fichas.length>1 ? `<button class="ghost small" data-compare-ficha="${f.id}">🔀 Comparar</button>` : ''}
@@ -2151,6 +2152,9 @@ function bindEvents(){
       render();
     };
   });
+  document.querySelectorAll('[data-resumo-treino]').forEach(el=>{
+    el.onclick = ()=> openResumoTreinoModal(state.studentId, el.dataset.resumoTreino);
+  });
   const sairTreinoAoVivo = document.getElementById('sairTreinoAoVivo');
   if(sairTreinoAoVivo) sairTreinoAoVivo.onclick = ()=>{ state.treinoAoVivo = null; render(); };
   document.querySelectorAll('[data-live-toggle]').forEach(el=>{
@@ -2225,6 +2229,71 @@ function closeModal(){
 document.getElementById('modalBg').addEventListener('click', e=>{
   if(e.target.id==='modalBg') closeModal();
 });
+
+const PERGUNTAS_RESUMO_TREINO = [
+  { chave:'desempenho', label:'Desempenho geral do aluno hoje?', prefixo:'Desempenho', opcoes:['Excelente','Bom','Regular'] },
+  { chave:'esforco', label:'Nível de esforço aplicado?', prefixo:'Esforço', opcoes:['Alto','Moderado','Leve'] },
+  { chave:'evolucao', label:'Evolução em relação ao treino anterior?', prefixo:'Evolução', opcoes:['Evoluiu 📈','Manteve o nível ➡️','Precisa ajustar 🔧'] },
+];
+
+function openResumoTreinoModal(studentId, fichaId){
+  const s = db.students.find(x=>x.id===studentId);
+  const f = s && s.fichas.find(x=>x.id===fichaId);
+  if(!s || !f) return;
+  const nomeFicha = f.nome || ('Treino '+f.letra);
+  const escolhas = {};
+  PERGUNTAS_RESUMO_TREINO.forEach(p=> escolhas[p.chave] = p.opcoes[0]);
+
+  function montarMensagem(){
+    const linhas = PERGUNTAS_RESUMO_TREINO.map(p=> `${p.prefixo}: ${escolhas[p.chave]}`);
+    return `Oi ${s.nome}! Você concluiu o ${nomeFicha} hoje 💪\n${linhas.join('\n')}\nContinue assim!`;
+  }
+
+  const avisoWhatsapp = !s.whatsapp ? `<div class="meta" style="color:var(--yellow);margin-bottom:12px;">⚠️ Cadastre o WhatsApp do aluno em "Editar aluno" para poder enviar.</div>` : '';
+
+  openModal(`
+    <h3>Resumo do treino</h3>
+    <div class="meta" style="margin-bottom:14px;">${escapeHtml(nomeFicha)} concluído • ${escapeHtml(s.nome)}</div>
+    ${avisoWhatsapp}
+    ${PERGUNTAS_RESUMO_TREINO.map(p=>`
+      <div class="field">
+        <label>${escapeHtml(p.label)}</label>
+        <div class="row" style="gap:6px;flex-wrap:nowrap;">
+          ${p.opcoes.map((op,i)=>`<button type="button" class="small resumoOpt" data-resumo-pergunta="${p.chave}" data-resumo-opcao="${escapeAttr(op)}" style="flex:1;${i===0?'border-color:var(--green);color:var(--green);':'background:var(--panel2);color:var(--text);border:1px solid var(--line);'}">${escapeHtml(op)}</button>`).join('')}
+        </div>
+      </div>
+    `).join('')}
+    <div class="field">
+      <label>Prévia da mensagem</label>
+      <div id="resumoPreview" class="anamneseBox" style="white-space:pre-wrap;">${escapeHtml(montarMensagem())}</div>
+    </div>
+    <div class="actions">
+      <button class="secondary" onclick="closeModal()">Cancelar</button>
+      <button id="resumoEnviar" ${!s.whatsapp?'disabled style="opacity:.5;cursor:not-allowed;"':''}>Enviar no WhatsApp</button>
+    </div>
+  `);
+
+  document.querySelectorAll('.resumoOpt').forEach(btn=>{
+    btn.onclick = ()=>{
+      const pergunta = btn.dataset.resumoPergunta;
+      escolhas[pergunta] = btn.dataset.resumoOpcao;
+      document.querySelectorAll(`.resumoOpt[data-resumo-pergunta="${pergunta}"]`).forEach(b=>{
+        const selecionado = b === btn;
+        b.style.background = 'var(--panel2)';
+        b.style.color = selecionado ? 'var(--green)' : 'var(--text)';
+        b.style.border = selecionado ? '1px solid var(--green)' : '1px solid var(--line)';
+      });
+      document.getElementById('resumoPreview').textContent = montarMensagem();
+    };
+  });
+
+  const resumoEnviar = document.getElementById('resumoEnviar');
+  if(resumoEnviar) resumoEnviar.onclick = ()=>{
+    if(!s.whatsapp) return;
+    window.open(whatsappLink(s.whatsapp, montarMensagem()), '_blank');
+    closeModal();
+  };
+}
 
 // ---------- TOAST / CONFIRMAÇÃO (substituem alert()/confirm() nativos) ----------
 function showToast(message, type){
