@@ -3145,23 +3145,28 @@ function traduzErroFirebase(err){
     'auth/weak-password':'A senha precisa ter pelo menos 6 caracteres.',
     'auth/too-many-requests':'Muitas tentativas seguidas. Aguarde um pouco e tente de novo.',
     'auth/network-request-failed':'Falha de conexão. Verifique sua internet e tente de novo.',
+    'auth/missing-email':'Digite seu e-mail.',
   };
   return map[code] || 'Não foi possível entrar. Tente novamente.';
 }
-function renderLoginScreen(erro){
+function renderLoginScreen(mensagem, emailPreenchido, tipoMensagem){
   const navEl = document.querySelector('nav');
   if(navEl) navEl.style.display = 'none';
+  const corMensagem = tipoMensagem==='sucesso' ? 'var(--green)' : 'var(--red)';
   document.getElementById('main').innerHTML = `
     <div style="max-width:360px;margin:80px auto;text-align:center;">
       <h2 style="margin-bottom:4px;">Fit<span style="color:var(--accent2);">Pro</span> Manager</h2>
       <div class="sub" style="margin-bottom:24px;">Entre com seu e-mail e senha para acessar seus dados, sincronizados entre todos os seus aparelhos.</div>
       <div class="card" style="text-align:left;">
-        ${erro ? `<div class="banner" style="margin-bottom:14px;">${escapeHtml(erro)}</div>` : ''}
-        <div class="field"><label>E-mail</label><input id="loginEmail" type="email" placeholder="seuemail@exemplo.com"></div>
+        ${mensagem ? `<div class="banner" style="margin-bottom:14px;border-color:${corMensagem};">${escapeHtml(mensagem)}</div>` : ''}
+        <div class="field"><label>E-mail</label><input id="loginEmail" type="email" placeholder="seuemail@exemplo.com" value="${emailPreenchido?escapeAttr(emailPreenchido):''}"></div>
         <div class="field"><label>Senha</label><input id="loginSenha" type="password" placeholder="Mínimo 6 caracteres"></div>
         <div class="actions" style="justify-content:space-between;">
           <button class="secondary" id="btnCriarConta">Criar conta</button>
           <button id="btnEntrar">Entrar</button>
+        </div>
+        <div style="text-align:center;margin-top:14px;">
+          <a href="#" id="linkEsqueciSenha" style="color:var(--accent);font-size:12px;text-decoration:none;">Esqueci minha senha</a>
         </div>
       </div>
     </div>
@@ -3172,14 +3177,22 @@ function renderLoginScreen(erro){
   });
   document.getElementById('btnEntrar').onclick = ()=>{
     const {email, senha} = lerCampos();
-    if(!email || !senha){ renderLoginScreen('Preencha e-mail e senha.'); return; }
-    window.__fbSignIn(email, senha).catch(err=> renderLoginScreen(traduzErroFirebase(err)));
+    if(!email || !senha){ renderLoginScreen('Preencha e-mail e senha.', email); return; }
+    window.__fbSignIn(email, senha).catch(err=> renderLoginScreen(traduzErroFirebase(err), email));
   };
   document.getElementById('btnCriarConta').onclick = ()=>{
     const {email, senha} = lerCampos();
-    if(!email || !senha){ renderLoginScreen('Preencha e-mail e senha.'); return; }
-    if(senha.length<6){ renderLoginScreen('A senha precisa ter pelo menos 6 caracteres.'); return; }
-    window.__fbSignUp(email, senha).catch(err=> renderLoginScreen(traduzErroFirebase(err)));
+    if(!email || !senha){ renderLoginScreen('Preencha e-mail e senha.', email); return; }
+    if(senha.length<6){ renderLoginScreen('A senha precisa ter pelo menos 6 caracteres.', email); return; }
+    window.__fbSignUp(email, senha).catch(err=> renderLoginScreen(traduzErroFirebase(err), email));
+  };
+  document.getElementById('linkEsqueciSenha').onclick = (e)=>{
+    e.preventDefault();
+    const email = document.getElementById('loginEmail').value.trim();
+    if(!email){ renderLoginScreen('Digite seu e-mail no campo acima e clique em "Esqueci minha senha" de novo.', email); return; }
+    window.__fbResetPassword(email)
+      .then(()=> renderLoginScreen('Enviamos um e-mail para redefinir sua senha. Confira sua caixa de entrada (e o spam).', email, 'sucesso'))
+      .catch(err=> renderLoginScreen(traduzErroFirebase(err), email));
   };
 }
 window.__fitproReady = function(cloudData, uid, email){
@@ -3208,7 +3221,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -3227,6 +3240,7 @@ const dbFire = getFirestore(fbApp);
 window.__fbSignIn = (email, senha) => signInWithEmailAndPassword(auth, email, senha);
 window.__fbSignUp = (email, senha) => createUserWithEmailAndPassword(auth, email, senha);
 window.__fbSignOut = () => signOut(auth);
+window.__fbResetPassword = (email) => sendPasswordResetEmail(auth, email);
 
 window.__cloudSave = async (uid, data) => {
   try {
