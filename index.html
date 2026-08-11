@@ -209,15 +209,17 @@
 </head>
 <body>
 <div class="app">
-  <nav>
+  <nav style="display:none;">
     <h1>Fit<span>Pro</span> Manager</h1>
     <div class="tab active" data-tab="alunos">👤 Alunos</div>
     <div class="tab" data-tab="pagamentos">💳 Pagamentos</div>
     <div class="tab" data-tab="agenda">🗓️ Agenda</div>
     <div class="tab" data-tab="exercicios">🏋️ Banco de Exercícios</div>
     <div class="tab" data-tab="backup">💾 Backup</div>
+    <div class="tab" id="navSair" style="margin-top:20px;border-top:1px solid var(--line);color:var(--muted);">🚪 Sair</div>
+    <div id="navUsuario" style="padding:10px 20px;font-size:11px;color:var(--muted);word-break:break-all;"></div>
   </nav>
-  <main id="main"></main>
+  <main id="main"><div style="text-align:center;margin-top:100px;color:var(--muted);">Carregando…</div></main>
 </div>
 
 <div class="modalBg" id="modalBg">
@@ -419,10 +421,14 @@ function loadDB(){
   }
   return data;
 }
-function saveDB(){ localStorage.setItem(DB_KEY, JSON.stringify(db)); }
+function saveDB(){
+  localStorage.setItem(DB_KEY, JSON.stringify(db));
+  if(window.__cloudSave && currentUid){ window.__cloudSave(currentUid, db); }
+}
 function uid(){ return Math.random().toString(36).slice(2,10); }
 
 let db = loadDB();
+let currentUid = null;
 let state = { tab:'alunos', studentId:null, chartMetric:'peso', studentFilter:'ativos', collapsedSections: { anamnese:true, evolucao:true, avaliacoes:true, fichas:false, cargas:false }, agendaView:null, agendaRef:null, printRecibo:null, treinoAoVivo:null, exerciseCollapsedGroups:{} };
 
 // ---------- REAVALIAÇÃO (lembrete) ----------
@@ -577,9 +583,9 @@ const TEMPLATES_FICHA = {
 };
 
 // ---------- NAV ----------
-document.querySelectorAll('nav .tab').forEach(t=>{
+document.querySelectorAll('nav .tab[data-tab]').forEach(t=>{
   t.addEventListener('click', ()=>{
-    document.querySelectorAll('nav .tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('nav .tab[data-tab]').forEach(x=>x.classList.remove('active'));
     t.classList.add('active');
     state.tab = t.dataset.tab;
     state.studentId = null;
@@ -3127,7 +3133,121 @@ function whatsappLink(numero, mensagem){
   return `https://wa.me/${digits}${texto}`;
 }
 
-render();
+// ---------- LOGIN / NUVEM ----------
+function traduzErroFirebase(err){
+  const code = (err && err.code) || '';
+  const map = {
+    'auth/invalid-email':'E-mail inválido.',
+    'auth/user-not-found':'Não existe conta com esse e-mail. Clique em "Criar conta".',
+    'auth/wrong-password':'Senha incorreta.',
+    'auth/invalid-credential':'E-mail ou senha incorretos.',
+    'auth/email-already-in-use':'Já existe uma conta com esse e-mail. Clique em "Entrar".',
+    'auth/weak-password':'A senha precisa ter pelo menos 6 caracteres.',
+    'auth/too-many-requests':'Muitas tentativas seguidas. Aguarde um pouco e tente de novo.',
+    'auth/network-request-failed':'Falha de conexão. Verifique sua internet e tente de novo.',
+  };
+  return map[code] || 'Não foi possível entrar. Tente novamente.';
+}
+function renderLoginScreen(erro){
+  const navEl = document.querySelector('nav');
+  if(navEl) navEl.style.display = 'none';
+  document.getElementById('main').innerHTML = `
+    <div style="max-width:360px;margin:80px auto;text-align:center;">
+      <h2 style="margin-bottom:4px;">Fit<span style="color:var(--accent2);">Pro</span> Manager</h2>
+      <div class="sub" style="margin-bottom:24px;">Entre com seu e-mail e senha para acessar seus dados, sincronizados entre todos os seus aparelhos.</div>
+      <div class="card" style="text-align:left;">
+        ${erro ? `<div class="banner" style="margin-bottom:14px;">${escapeHtml(erro)}</div>` : ''}
+        <div class="field"><label>E-mail</label><input id="loginEmail" type="email" placeholder="seuemail@exemplo.com"></div>
+        <div class="field"><label>Senha</label><input id="loginSenha" type="password" placeholder="Mínimo 6 caracteres"></div>
+        <div class="actions" style="justify-content:space-between;">
+          <button class="secondary" id="btnCriarConta">Criar conta</button>
+          <button id="btnEntrar">Entrar</button>
+        </div>
+      </div>
+    </div>
+  `;
+  const lerCampos = ()=>({
+    email: document.getElementById('loginEmail').value.trim(),
+    senha: document.getElementById('loginSenha').value,
+  });
+  document.getElementById('btnEntrar').onclick = ()=>{
+    const {email, senha} = lerCampos();
+    if(!email || !senha){ renderLoginScreen('Preencha e-mail e senha.'); return; }
+    window.__fbSignIn(email, senha).catch(err=> renderLoginScreen(traduzErroFirebase(err)));
+  };
+  document.getElementById('btnCriarConta').onclick = ()=>{
+    const {email, senha} = lerCampos();
+    if(!email || !senha){ renderLoginScreen('Preencha e-mail e senha.'); return; }
+    if(senha.length<6){ renderLoginScreen('A senha precisa ter pelo menos 6 caracteres.'); return; }
+    window.__fbSignUp(email, senha).catch(err=> renderLoginScreen(traduzErroFirebase(err)));
+  };
+}
+window.__fitproReady = function(cloudData, uid, email){
+  currentUid = uid;
+  if(cloudData){
+    db = cloudData;
+    if(!db.bloqueios) db.bloqueios = [];
+  } else {
+    db = loadDB();
+    saveDB();
+  }
+  const navEl = document.querySelector('nav');
+  if(navEl) navEl.style.display = '';
+  const navUsuario = document.getElementById('navUsuario');
+  if(navUsuario) navUsuario.textContent = email || '';
+  render();
+};
+window.__showLogin = function(){
+  currentUid = null;
+  renderLoginScreen();
+};
+document.addEventListener('DOMContentLoaded', ()=>{
+  const navSair = document.getElementById('navSair');
+  if(navSair) navSair.onclick = ()=>{ if(window.__fbSignOut) window.__fbSignOut(); };
+});
+</script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCxC6Z4QSz3Za3wACBMlXUw_joYoYyAzAw",
+  authDomain: "fitpro-manager-ed0c8.firebaseapp.com",
+  projectId: "fitpro-manager-ed0c8",
+  storageBucket: "fitpro-manager-ed0c8.firebasestorage.app",
+  messagingSenderId: "188505708125",
+  appId: "1:188505708125:web:6273065b66d098a46c9fb4"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const auth = getAuth(fbApp);
+const dbFire = getFirestore(fbApp);
+
+window.__fbSignIn = (email, senha) => signInWithEmailAndPassword(auth, email, senha);
+window.__fbSignUp = (email, senha) => createUserWithEmailAndPassword(auth, email, senha);
+window.__fbSignOut = () => signOut(auth);
+
+window.__cloudSave = async (uid, data) => {
+  try {
+    await setDoc(doc(dbFire, 'usuarios', uid), { payload: JSON.stringify(data), atualizadoEm: new Date().toISOString() });
+  } catch(e){ console.error('Erro ao salvar na nuvem', e); }
+};
+
+onAuthStateChanged(auth, async (user) => {
+  if(user){
+    let cloudData = null;
+    try {
+      const snap = await getDoc(doc(dbFire, 'usuarios', user.uid));
+      if(snap.exists() && snap.data().payload){
+        cloudData = JSON.parse(snap.data().payload);
+      }
+    } catch(e){ console.error('Erro ao carregar dados da nuvem', e); }
+    window.__fitproReady(cloudData, user.uid, user.email);
+  } else {
+    window.__showLogin();
+  }
+});
 </script>
 </body>
 </html>
