@@ -2264,10 +2264,19 @@ function openStudentModal(student){
 
 function openExerciseModal(ex){
   const editing = !!ex;
+  const gruposExistentes = [...new Set(db.exercises.map(e=>e.grupo).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  const grupoAtualEhNovo = editing && ex.grupo && !gruposExistentes.includes(ex.grupo);
   openModal(`
     <h3>${editing?'Editar exercício':'Novo exercício'}</h3>
     <div class="field"><label>Nome</label><input id="eNome" value="${editing?escapeAttr(ex.nome):''}"></div>
-    <div class="field"><label>Grupo muscular</label><input id="eGrupo" value="${editing?escapeAttr(ex.grupo):''}" placeholder="Ex: Peito, Costas, Pernas"></div>
+    <div class="field"><label>Grupo muscular</label>
+      <select id="eGrupoSelect">
+        <option value="">Selecione um grupo...</option>
+        ${gruposExistentes.map(g=>`<option value="${escapeAttr(g)}" ${editing&&ex.grupo===g?'selected':''}>${escapeHtml(g)}</option>`).join('')}
+        <option value="__novo__" ${grupoAtualEhNovo?'selected':''}>➕ Novo grupo...</option>
+      </select>
+      <input id="eGrupoNovo" placeholder="Nome do novo grupo" style="margin-top:8px;display:${grupoAtualEhNovo?'block':'none'};" value="${grupoAtualEhNovo?escapeAttr(ex.grupo):''}">
+    </div>
     <div class="row">
       <div class="field" style="flex:1"><label>Séries padrão</label><input id="eSeries" value="${editing?escapeAttr(ex.series):''}"></div>
       <div class="field" style="flex:1"><label>Repetições</label><input id="eReps" value="${editing?escapeAttr(ex.reps):''}"></div>
@@ -2279,10 +2288,15 @@ function openExerciseModal(ex){
       <button id="eSave">Salvar</button>
     </div>
   `);
+  document.getElementById('eGrupoSelect').onchange = ()=>{
+    document.getElementById('eGrupoNovo').style.display = document.getElementById('eGrupoSelect').value==='__novo__' ? 'block' : 'none';
+  };
   document.getElementById('eSave').onclick = ()=>{
     const nome = document.getElementById('eNome').value.trim();
     if(!nome){ showToast('Informe o nome do exercício.', 'error'); return; }
-    const grupo = document.getElementById('eGrupo').value.trim();
+    const grupoSelecionado = document.getElementById('eGrupoSelect').value;
+    const grupo = grupoSelecionado==='__novo__' ? document.getElementById('eGrupoNovo').value.trim() : grupoSelecionado;
+    if(!grupo){ showToast('Selecione ou informe um grupo muscular.', 'error'); return; }
     const series = document.getElementById('eSeries').value.trim();
     const reps = document.getElementById('eReps').value.trim();
     const obs = document.getElementById('eObs').value.trim();
