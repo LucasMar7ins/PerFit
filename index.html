@@ -419,7 +419,7 @@ function saveDB(){ localStorage.setItem(DB_KEY, JSON.stringify(db)); }
 function uid(){ return Math.random().toString(36).slice(2,10); }
 
 let db = loadDB();
-let state = { tab:'alunos', studentId:null, chartMetric:'peso', studentFilter:'ativos', collapsedSections: { anamnese:true, evolucao:true, avaliacoes:true, fichas:false, cargas:false }, agendaView:null, agendaRef:null, printRecibo:null, treinoAoVivo:null };
+let state = { tab:'alunos', studentId:null, chartMetric:'peso', studentFilter:'ativos', collapsedSections: { anamnese:true, evolucao:true, avaliacoes:true, fichas:false, cargas:false }, agendaView:null, agendaRef:null, printRecibo:null, treinoAoVivo:null, exerciseCollapsedGroups:{} };
 
 // ---------- REAVALIAÇÃO (lembrete) ----------
 const REAVAL_DIAS_LIMITE = 45; // ~6-7 semanas sem atualizar medidas
@@ -1657,7 +1657,6 @@ function exerciseRowHtml(e){
   return `
     <tr>
       <td>${escapeHtml(e.nome)}</td>
-      <td>${escapeHtml(e.grupo)}</td>
       <td>${escapeHtml(e.series)}</td>
       <td>${escapeHtml(e.reps)}</td>
       <td>${escapeHtml(e.obs||'-')}</td>
@@ -1677,13 +1676,40 @@ function filteredExercises(){
     (e.grupo||'').toLowerCase().includes(term)
   );
 }
-function renderExerciseRows(){
+function grupoExercicioColapsado(grupo){
+  return state.exerciseCollapsedGroups[grupo] !== false; // padrão: fechado, só abre se explicitamente marcado
+}
+function exerciseGroupsHtml(){
   const filtered = filteredExercises();
-  const tbody = document.getElementById('exTableBody');
-  if(!tbody) return;
-  tbody.innerHTML = filtered.map(exerciseRowHtml).join('') || '<tr><td colspan="7" class="empty">Nenhum exercício encontrado para essa busca.</td></tr>';
+  const term = (state.exerciseSearch||'').trim();
+  const grupos = [...new Set(db.exercises.map(e=>e.grupo||'Sem grupo'))].sort();
+  const html = grupos.map(grupo=>{
+    const exs = filtered.filter(e=>(e.grupo||'Sem grupo')===grupo);
+    if(exs.length===0) return '';
+    const colapsado = term ? false : grupoExercicioColapsado(grupo);
+    return `
+      <div class="card" style="padding:0;overflow:hidden;margin-bottom:12px;">
+        <div class="sectionTitle noprint" style="margin:0;padding:14px 18px;cursor:pointer;" data-toggle-ex-group="${escapeAttr(grupo)}">
+          <span class="collapseToggle"><span class="collapseArrow">${colapsado?'▶':'▼'}</span> ${escapeHtml(grupo)}</span>
+          <span class="tag gray" style="margin-left:auto;">${exs.length} exercício(s)</span>
+        </div>
+        <div class="collapsibleContent" style="display:${colapsado?'none':'block'};padding:0 18px 16px;">
+          <table>
+            <thead><tr><th>Nome</th><th>Séries</th><th>Reps</th><th>Obs</th><th>Vídeo</th><th class="noprint"></th></tr></thead>
+            <tbody>${exs.map(exerciseRowHtml).join('')}</tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }).join('');
+  return html || '<div class="empty">Nenhum exercício encontrado para essa busca.</div>';
+}
+function renderExerciseRows(){
+  const container = document.getElementById('exGroupsContainer');
+  if(!container) return;
+  container.innerHTML = exerciseGroupsHtml();
   const countLabel = document.getElementById('exCountLabel');
-  if(countLabel) countLabel.textContent = `${filtered.length} de ${db.exercises.length} exercício(s)`;
+  if(countLabel) countLabel.textContent = `${filteredExercises().length} de ${db.exercises.length} exercício(s)`;
   bindExerciseRowEvents();
 }
 function bindExerciseRowEvents(){
@@ -1698,10 +1724,16 @@ function bindExerciseRowEvents(){
       }, {danger:true, confirmLabel:'Excluir'});
     };
   });
+  document.querySelectorAll('[data-toggle-ex-group]').forEach(el=>{
+    el.onclick = ()=>{
+      const grupo = el.dataset.toggleExGroup;
+      state.exerciseCollapsedGroups[grupo] = !grupoExercicioColapsado(grupo);
+      renderExerciseRows();
+    };
+  });
 }
 function renderExercises(){
   const groups = [...new Set(db.exercises.map(e=>e.grupo))].sort();
-  const rows = filteredExercises().map(exerciseRowHtml).join('');
   return `
     <h2>Banco de Exercícios</h2>
     <div class="sub">Cadastre exercícios uma vez e reutilize em qualquer ficha. ${groups.length} grupo(s) muscular(es) cadastrados.</div>
@@ -1716,12 +1748,7 @@ function renderExercises(){
       </div>
       <div class="meta" id="exCountLabel" style="margin-top:8px;">${filteredExercises().length} de ${db.exercises.length} exercício(s)</div>
     </div>
-    <div class="card">
-      <table>
-        <thead><tr><th>Nome</th><th>Grupo</th><th>Séries</th><th>Reps</th><th>Obs</th><th>Vídeo</th><th class="noprint"></th></tr></thead>
-        <tbody id="exTableBody">${rows || '<tr><td colspan="7" class="empty">Nenhum exercício encontrado para essa busca.</td></tr>'}</tbody>
-      </table>
-    </div>
+    <div id="exGroupsContainer">${exerciseGroupsHtml()}</div>
   `;
 }
 
