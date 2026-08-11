@@ -824,9 +824,15 @@ function ocorrenciasDoDia(alunos, dataISO, diaKey){
 
 function slotChipHtml(a, dataISO){
   const statusClass = a.presencaStatus ? ' agendaSlot-'+a.presencaStatus : '';
+  const quandoTexto = dataISO===isoHoje() ? 'hoje' : `no dia ${formatDate(dataISO)}`;
+  const mensagemLembrete = `Oi ${a.aluno.nome}! Só lembrando que você tem treino marcado ${quandoTexto} às ${a.horario||''}. Te espero! 💪`;
+  const linkLembrete = a.aluno.whatsapp ? whatsappLink(a.aluno.whatsapp, mensagemLembrete) : null;
   return `
     <div class="agendaSlot${statusClass}" data-agenda-ocorrencia="${a.aluno.id}|${a.id}|${dataISO}" title="Clique para marcar presença ou editar">
-      <span class="hora">${escapeHtml(a.horario||'-')}</span> ${escapeHtml(a.aluno.nome)}
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:4px;">
+        <span><span class="hora">${escapeHtml(a.horario||'-')}</span> ${escapeHtml(a.aluno.nome)}</span>
+        ${linkLembrete ? `<a href="${linkLembrete}" target="_blank" rel="noopener" class="noprint" data-agenda-lembrete title="Lembrar treino no WhatsApp" style="text-decoration:none;flex-shrink:0;">💬</a>` : ''}
+      </div>
       ${a.tipo==='unico' ? `<div style="opacity:.75;">única</div>` : ''}
     </div>
   `;
@@ -1625,6 +1631,10 @@ function bindEvents(){
       const [studentId, slotId, dataISO] = el.dataset.agendaOcorrencia.split('|');
       openOcorrenciaModal(studentId, slotId, dataISO);
     };
+  });
+
+  document.querySelectorAll('[data-agenda-lembrete]').forEach(el=>{
+    el.onclick = (ev)=> ev.stopPropagation();
   });
 
   document.querySelectorAll('[data-cal-add]').forEach(el=>{
