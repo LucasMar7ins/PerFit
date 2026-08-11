@@ -437,6 +437,29 @@ function buildAnamneseTable(s){
   `).join('');
 }
 
+// ---------- VOLUME DE TREINO (séries x reps x carga) ----------
+function parseNumeroMedio(str){
+  if(!str) return null;
+  const matches = String(str).match(/\d+(?:[.,]\d+)?/g);
+  if(!matches || matches.length===0) return null;
+  const nums = matches.map(m=>parseFloat(m.replace(',','.')));
+  return nums.reduce((a,b)=>a+b,0)/nums.length;
+}
+function calcularVolumeExercicio(e){
+  const series = parseNumeroMedio(e.series);
+  const reps = parseNumeroMedio(e.reps);
+  const carga = parseNumeroMedio(e.obs);
+  if(series===null || reps===null || carga===null) return null;
+  return series * reps * carga;
+}
+function volumeTotalFicha(f){
+  return f.exercicios.reduce((sum,e)=>{ const v = calcularVolumeExercicio(e); return sum + (v||0); }, 0);
+}
+function formatVolume(v){
+  if(v===null || v===undefined) return '-';
+  return Math.round(v).toLocaleString('pt-BR');
+}
+
 // ---------- LEMBRETE DE BACKUP ----------
 const BACKUP_KEY = 'fitpro_last_backup';
 const BACKUP_DIAS_LIMITE = 7;
@@ -509,12 +532,13 @@ function renderFichaPrint(studentId, fichaId){
       <h2 style="margin-bottom:2px;">${escapeHtml(s.nome)}</h2>
       <div class="sub">${escapeHtml(f.nome || ('Treino '+f.letra))} • Treino ${escapeHtml(f.letra)}${s.objetivo?(' • '+escapeHtml(s.objetivo)):''}${s.nivel?(' • '+escapeHtml(s.nivel)):''}</div>
       <table>
-        <thead><tr><th style="width:30px;"></th><th>Exercício</th><th>Grupo</th><th>Séries</th><th>Reps</th><th>Carga</th><th>Descanso</th></tr></thead>
+        <thead><tr><th style="width:30px;"></th><th>Exercício</th><th>Grupo</th><th>Séries</th><th>Reps</th><th>Carga</th><th>Descanso</th><th>Volume</th></tr></thead>
         <tbody>
-          ${f.exercicios.map(e=>`<tr><td>☐</td><td>${escapeHtml(e.nome)}</td><td>${escapeHtml(e.grupo||'-')}</td><td>${escapeHtml(e.series||'-')}</td><td>${escapeHtml(e.reps||'-')}</td><td>${escapeHtml(e.obs||'-')}</td><td>${escapeHtml(e.descanso||'-')}</td></tr>`).join('')}
+          ${f.exercicios.map(e=>`<tr><td>☐</td><td>${escapeHtml(e.nome)}</td><td>${escapeHtml(e.grupo||'-')}</td><td>${escapeHtml(e.series||'-')}</td><td>${escapeHtml(e.reps||'-')}</td><td>${escapeHtml(e.obs||'-')}</td><td>${escapeHtml(e.descanso||'-')}</td><td>${formatVolume(calcularVolumeExercicio(e))}</td></tr>`).join('')}
         </tbody>
       </table>
-      <div class="meta" style="margin-top:16px;">Gerado em ${formatDate(hoje)} • FitPro Manager</div>
+      <div class="meta" style="margin-top:10px;font-weight:600;">🏋️ Volume total do treino: ${formatVolume(volumeTotalFicha(f))}kg</div>
+      <div class="meta" style="margin-top:6px;">Gerado em ${formatDate(hoje)} • FitPro Manager</div>
     </div>
   `;
 }
@@ -841,6 +865,7 @@ function renderStudentDetail(id){
           </div>
           <span class="tag ${f.ativa?'green':'gray'}">${f.ativa?'ATIVA':'ARQUIVADA'}</span>
           <span class="tag ${feitos===total && total>0 ?'green':'gray'}">${feitos}/${total} concluído(s)</span>
+          <span class="tag gray" id="volTotal-${f.id}">🏋️ Volume: ${formatVolume(volumeTotalFicha(f))}kg</span>
         </div>
         <div class="row noprint">
           <button class="secondary small" data-edit-ficha="${f.id}">Editar</button>
@@ -853,7 +878,7 @@ function renderStudentDetail(id){
         </div>
       </div>
       <table>
-        <thead><tr><th class="noprint">Feito</th><th>Exercício</th><th>Grupo</th><th>Séries</th><th>Reps</th><th>Carga</th><th>Descanso</th><th>Anotações</th></tr></thead>
+        <thead><tr><th class="noprint">Feito</th><th>Exercício</th><th>Grupo</th><th>Séries</th><th>Reps</th><th>Carga</th><th>Descanso</th><th title="Séries x Reps x Carga">Volume</th><th>Anotações</th></tr></thead>
         <tbody>
           ${f.exercicios.map(e=>`<tr>
             <td class="noprint"><input type="checkbox" data-toggle-exec="${f.id}|${e.id}" ${e.feito?'checked':''} style="width:18px;height:18px;cursor:pointer;"></td>
@@ -863,6 +888,7 @@ function renderStudentDetail(id){
             <td><input class="inlineEdit noprint-border" data-field-exec="${f.id}|${e.id}|reps" value="${escapeAttr(e.reps||'')}" placeholder="-"></td>
             <td><input class="inlineEdit noprint-border" data-field-exec="${f.id}|${e.id}|obs" value="${escapeAttr(e.obs||'')}" placeholder="-"></td>
             <td><input class="inlineEdit noprint-border" data-field-exec="${f.id}|${e.id}|descanso" value="${escapeAttr(e.descanso||'')}" placeholder="Ex: 60s"></td>
+            <td id="vol-${f.id}-${e.id}" style="color:var(--muted);">${formatVolume(calcularVolumeExercicio(e))}</td>
             <td>
               <button type="button" class="secondary small noprint" data-open-note="${f.id}|${e.id}" style="${e.notas?'border-color:var(--yellow);color:var(--yellow);':''}">${e.notas?'📝 Ver observação':'📝 Observação'}</button>
               <span class="onlyPrint">${escapeHtml(e.notas||'-')}</span>
@@ -1267,6 +1293,12 @@ function bindEvents(){
       const ex = f.exercicios.find(x=>x.id===execId);
       ex[field] = el.value;
       saveDB();
+      if(field==='series' || field==='reps' || field==='obs'){
+        const volCell = document.getElementById(`vol-${fichaId}-${execId}`);
+        if(volCell) volCell.textContent = formatVolume(calcularVolumeExercicio(ex));
+        const volTotalEl = document.getElementById(`volTotal-${fichaId}`);
+        if(volTotalEl) volTotalEl.textContent = '🏋️ Volume: ' + formatVolume(volumeTotalFicha(f)) + 'kg';
+      }
     });
   });
   document.querySelectorAll('[data-reset-checks]').forEach(el=>{
@@ -1729,11 +1761,12 @@ function compareTableHtml(f){
     <div style="font-weight:600;margin-bottom:2px;">${escapeHtml(f.nome||('Treino '+f.letra))}</div>
     <div class="meta" style="margin-bottom:8px;">Treino ${escapeHtml(f.letra)} • ${f.ativa?'ativa':'arquivada'} • criada em ${formatDate(f.criadoEm)}</div>
     <table>
-      <thead><tr><th>Exercício</th><th>Séries</th><th>Reps</th><th>Carga</th><th>Descanso</th></tr></thead>
+      <thead><tr><th>Exercício</th><th>Séries</th><th>Reps</th><th>Carga</th><th>Descanso</th><th>Volume</th></tr></thead>
       <tbody>
-        ${f.exercicios.map(e=>`<tr><td>${escapeHtml(e.nome)}</td><td>${escapeHtml(e.series||'-')}</td><td>${escapeHtml(e.reps||'-')}</td><td>${escapeHtml(e.obs||'-')}</td><td>${escapeHtml(e.descanso||'-')}</td></tr>`).join('') || '<tr><td colspan="5" class="empty">Sem exercícios.</td></tr>'}
+        ${f.exercicios.map(e=>`<tr><td>${escapeHtml(e.nome)}</td><td>${escapeHtml(e.series||'-')}</td><td>${escapeHtml(e.reps||'-')}</td><td>${escapeHtml(e.obs||'-')}</td><td>${escapeHtml(e.descanso||'-')}</td><td>${formatVolume(calcularVolumeExercicio(e))}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">Sem exercícios.</td></tr>'}
       </tbody>
     </table>
+    <div class="meta" style="margin-top:8px;font-weight:600;">🏋️ Volume total: ${formatVolume(volumeTotalFicha(f))}kg</div>
   `;
 }
 function openCompareModal(fichaA){
