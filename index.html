@@ -64,9 +64,14 @@
   .calAdd{cursor:pointer;color:var(--accent);font-weight:700;font-size:15px;line-height:1;padding:0 4px;}
   .calAdd:hover{color:var(--text);}
   .calCellBody{display:flex;flex-direction:column;gap:4px;overflow-y:auto;max-height:150px;}
-  .agendaSlot{background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:5px 7px;font-size:11px;cursor:pointer;}
+  .calCellSemana{min-height:200px;}
+  .agendaSlot{background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:5px 7px;font-size:11px;cursor:pointer;margin-bottom:4px;}
   .agendaSlot:hover{border-color:var(--accent);}
   .agendaSlot .hora{font-weight:700;color:var(--accent);}
+  .agendaSlot-compareceu{background:rgba(52,211,153,.20);border-color:var(--green);}
+  .agendaSlot-faltou{background:rgba(248,113,113,.20);border-color:var(--red);}
+  .agendaSlot-reposicao{background:rgba(251,191,36,.20);border-color:var(--yellow);}
+  .legendDot{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;vertical-align:middle;}
   .banner{border:1px solid var(--yellow);background:rgba(251,191,36,.08);border-radius:9px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--text);display:flex;align-items:center;gap:10px;}
   .compareCol{flex:1;min-width:0;}
   .compareCol table{font-size:13px;}
@@ -390,7 +395,7 @@ function saveDB(){ localStorage.setItem(DB_KEY, JSON.stringify(db)); }
 function uid(){ return Math.random().toString(36).slice(2,10); }
 
 let db = loadDB();
-let state = { tab:'alunos', studentId:null, chartMetric:'peso', studentFilter:'ativos', collapsedSections: { anamnese:true, evolucao:true, avaliacoes:true, fichas:false, cargas:false }, agendaAno:null, agendaMes:null };
+let state = { tab:'alunos', studentId:null, chartMetric:'peso', studentFilter:'ativos', collapsedSections: { anamnese:true, evolucao:true, avaliacoes:true, fichas:false, cargas:false }, agendaView:null, agendaRef:null };
 
 // ---------- REAVALIAÇÃO (lembrete) ----------
 const REAVAL_DIAS_LIMITE = 45; // ~6-7 semanas sem atualizar medidas
@@ -734,50 +739,74 @@ function diaSemanaFromISODate(iso){
   const map = ['dom','seg','ter','qua','qui','sex','sab'];
   return map[d.getDay()];
 }
+function isoFromDateObj(d){
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function isoHoje(){ return isoFromDateObj(new Date()); }
+
+// ---------- PRESENÇA (compareceu / faltou / reposição) ----------
+function getPresenca(s, slotId, dataISO){
+  return (s.presencas||[]).find(p=>p.slotId===slotId && p.data===dataISO) || null;
+}
+function setPresenca(s, slotId, dataISO, status){
+  if(!s.presencas) s.presencas = [];
+  const existente = s.presencas.find(p=>p.slotId===slotId && p.data===dataISO);
+  if(!status){
+    s.presencas = s.presencas.filter(p=>!(p.slotId===slotId && p.data===dataISO));
+    return;
+  }
+  if(existente){ existente.status = status; }
+  else { s.presencas.push({slotId, data:dataISO, status}); }
+}
+const PRESENCA_LABEL = { compareceu:'✅ Compareceu', faltou:'❌ Faltou', reposicao:'🔁 Reposição' };
 
 const NOMES_MES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const DIAS_SEMANA_ORDEM = ['seg','ter','qua','qui','sex','sab','dom'];
+const DIAS_SEMANA_CURTO = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
 
-function renderAgenda(){
-  const hoje = new Date();
-  if(state.agendaAno==null) state.agendaAno = hoje.getFullYear();
-  if(state.agendaMes==null) state.agendaMes = hoje.getMonth();
-  const ano = state.agendaAno, mes = state.agendaMes;
+function ocorrenciasDoDia(alunos, dataISO, diaKey){
+  const out = [];
+  alunos.forEach(s=>{
+    (s.agenda||[]).forEach(a=>{
+      if(a.tipo==='unico'){
+        if(a.data===dataISO) out.push({...a, aluno:s});
+      } else if(a.dia===diaKey){
+        out.push({...a, aluno:s});
+      }
+    });
+  });
+  out.sort((a,b)=> (a.horario||'').localeCompare(b.horario||''));
+  return out.map(a=>{
+    const presenca = getPresenca(a.aluno, a.id, dataISO);
+    return {...a, presencaStatus: presenca ? presenca.status : null};
+  });
+}
 
-  const alunos = db.students.filter(s=>(s.status||'ativo')==='ativo');
-  const hojeISO = hoje.toISOString().slice(0,10);
+function slotChipHtml(a, dataISO){
+  const statusClass = a.presencaStatus ? ' agendaSlot-'+a.presencaStatus : '';
+  return `
+    <div class="agendaSlot${statusClass}" data-agenda-ocorrencia="${a.aluno.id}|${a.id}|${dataISO}" title="Clique para marcar presença ou editar">
+      <span class="hora">${escapeHtml(a.horario||'-')}</span> ${escapeHtml(a.aluno.nome)}
+      ${a.tipo==='unico' ? `<div style="opacity:.75;">única</div>` : ''}
+    </div>
+  `;
+}
 
+function buildMesGrid(ano, mes, alunos, hojeISO){
   const primeiroDia = new Date(ano, mes, 1);
   const totalDias = new Date(ano, mes+1, 0).getDate();
   const offsetInicio = (primeiroDia.getDay()+6)%7; // 0 = segunda-feira
-
   const celulasDias = [];
   for(let i=0;i<offsetInicio;i++) celulasDias.push(null);
   for(let d=1; d<=totalDias; d++) celulasDias.push(d);
   while(celulasDias.length % 7 !== 0) celulasDias.push(null);
 
-  function slotsDoDia(dataISO, diaKey){
-    const out = [];
-    alunos.forEach(s=>{
-      (s.agenda||[]).forEach(a=>{
-        if(a.tipo==='unico'){
-          if(a.data===dataISO) out.push({...a, aluno:s});
-        } else if(a.dia===diaKey){
-          out.push({...a, aluno:s});
-        }
-      });
-    });
-    out.sort((a,b)=> (a.horario||'').localeCompare(b.horario||''));
-    return out;
-  }
-
-  const cabecalho = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'].map(l=>`<div class="calCabecalho">${l}</div>`).join('');
-
+  const cabecalho = DIAS_SEMANA_CURTO.map(l=>`<div class="calCabecalho">${l}</div>`).join('');
   const celulas = celulasDias.map((d, idx)=>{
     if(d===null) return `<div class="calCell calCellVazia"></div>`;
     const dataISO = `${ano}-${String(mes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const diaKey = DIAS_SEMANA_ORDEM[idx % 7];
-    const slots = slotsDoDia(dataISO, diaKey);
+    const slots = ocorrenciasDoDia(alunos, dataISO, diaKey);
     const ehHoje = dataISO === hojeISO;
     return `
       <div class="calCell ${ehHoje?'calCellHoje':''}">
@@ -785,35 +814,125 @@ function renderAgenda(){
           <span class="calNum">${d}</span>
           <span class="calAdd noprint" data-cal-add="${dataISO}" title="Adicionar horário neste dia">+</span>
         </div>
-        <div class="calCellBody">
-          ${slots.map(a=>`
-            <div class="agendaSlot" data-agenda-slot="${a.aluno.id}|${a.id}" title="Clique para editar ou remover">
-              <span class="hora">${escapeHtml(a.horario||'-')}</span> ${escapeHtml(a.aluno.nome)}
-              ${a.tipo==='unico' ? `<div style="color:var(--accent2);">única</div>` : ''}
-            </div>
-          `).join('')}
-        </div>
+        <div class="calCellBody">${slots.map(a=>slotChipHtml(a, dataISO)).join('')}</div>
       </div>
     `;
   }).join('');
+  return `<div class="calWrap"><div class="calGrid">${cabecalho}${celulas}</div></div>`;
+}
+
+function buildSemanaGrid(inicioSemana, alunos, hojeISO){
+  const cols = [];
+  for(let i=0;i<7;i++){
+    const d = new Date(inicioSemana);
+    d.setDate(inicioSemana.getDate()+i);
+    const dataISO = isoFromDateObj(d);
+    const diaKey = DIAS_SEMANA_ORDEM[i];
+    const slots = ocorrenciasDoDia(alunos, dataISO, diaKey);
+    const ehHoje = dataISO === hojeISO;
+    cols.push(`
+      <div class="calCell calCellSemana ${ehHoje?'calCellHoje':''}">
+        <div class="calCellHeader">
+          <span class="calNum">${DIAS_SEMANA_CURTO[i]} ${d.getDate()}/${d.getMonth()+1}</span>
+          <span class="calAdd noprint" data-cal-add="${dataISO}" title="Adicionar horário neste dia">+</span>
+        </div>
+        <div class="calCellBody" style="max-height:340px;">${slots.map(a=>slotChipHtml(a, dataISO)).join('') || '<div class="meta" style="text-align:center;">-</div>'}</div>
+      </div>
+    `);
+  }
+  return `<div class="calWrap"><div class="calGrid">${cols.join('')}</div></div>`;
+}
+
+function buildDiaView(dataISO, alunos){
+  const diaKey = diaSemanaFromISODate(dataISO);
+  const slots = ocorrenciasDoDia(alunos, dataISO, diaKey);
+  return `<div class="card">${slots.length ? slots.map(a=>slotChipHtml(a, dataISO)).join('') : '<div class="empty">Nenhum horário marcado para este dia.</div>'}</div>`;
+}
+
+function renderAgenda(){
+  if(!state.agendaView) state.agendaView = 'mes';
+  if(!state.agendaRef) state.agendaRef = isoHoje();
+  const hojeISO = isoHoje();
+  const alunos = db.students.filter(s=>(s.status||'ativo')==='ativo');
+  const refDate = new Date(state.agendaRef+'T00:00:00');
+
+  let titulo = '', corpo = '';
+  if(state.agendaView==='mes'){
+    const ano = refDate.getFullYear(), mes = refDate.getMonth();
+    titulo = `${NOMES_MES[mes]} de ${ano}`;
+    corpo = buildMesGrid(ano, mes, alunos, hojeISO);
+  } else if(state.agendaView==='semana'){
+    const offset = (refDate.getDay()+6)%7;
+    const inicioSemana = new Date(refDate);
+    inicioSemana.setDate(refDate.getDate()-offset);
+    const fimSemana = new Date(inicioSemana);
+    fimSemana.setDate(inicioSemana.getDate()+6);
+    titulo = `${String(inicioSemana.getDate()).padStart(2,'0')}/${String(inicioSemana.getMonth()+1).padStart(2,'0')} a ${String(fimSemana.getDate()).padStart(2,'0')}/${String(fimSemana.getMonth()+1).padStart(2,'0')}`;
+    corpo = buildSemanaGrid(inicioSemana, alunos, hojeISO);
+  } else {
+    const diaKey = diaSemanaFromISODate(state.agendaRef);
+    const diaLabel = DIAS_SEMANA.find(x=>x.key===diaKey).label;
+    titulo = `${diaLabel}, ${String(refDate.getDate()).padStart(2,'0')}/${String(refDate.getMonth()+1).padStart(2,'0')}/${refDate.getFullYear()}`;
+    corpo = buildDiaView(state.agendaRef, alunos);
+  }
 
   return `
     <h2>🗓️ Agenda</h2>
     <div class="sub">Calendário com os horários de treino de cada aluno.</div>
-    <div class="row noprint" style="margin-bottom:14px;align-items:center;">
-      <button class="secondary small" id="agPrevMes">&larr;</button>
-      <strong style="min-width:170px;text-align:center;">${NOMES_MES[mes]} de ${ano}</strong>
-      <button class="secondary small" id="agNextMes">&rarr;</button>
+    <div class="row noprint" style="margin-bottom:14px;align-items:center;flex-wrap:wrap;">
+      <button class="secondary small" id="agPrev">&larr;</button>
+      <strong style="min-width:170px;text-align:center;">${titulo}</strong>
+      <button class="secondary small" id="agNext">&rarr;</button>
       <button class="ghost small" id="agHojeBtn">Hoje</button>
+      <select id="agViewSelect" style="width:auto;padding:7px 10px;font-size:13px;">
+        <option value="dia" ${state.agendaView==='dia'?'selected':''}>Dia</option>
+        <option value="semana" ${state.agendaView==='semana'?'selected':''}>Semana</option>
+        <option value="mes" ${state.agendaView==='mes'?'selected':''}>Mês</option>
+      </select>
       <button id="btnNovoHorario" style="margin-left:auto;">+ Adicionar horário</button>
     </div>
-    <div class="calWrap">
-      <div class="calGrid">
-        ${cabecalho}
-        ${celulas}
+    <div class="row noprint" style="margin-bottom:14px;gap:16px;font-size:12px;color:var(--muted);align-items:center;">
+      <span><span class="legendDot" style="background:var(--green);"></span>Compareceu</span>
+      <span><span class="legendDot" style="background:var(--red);"></span>Faltou</span>
+      <span><span class="legendDot" style="background:var(--yellow);"></span>Reposição</span>
+      <span>Clique num horário para marcar presença</span>
+    </div>
+    ${corpo}
+  `;
+}
+
+function openOcorrenciaModal(studentId, slotId, dataISO){
+  const s = db.students.find(x=>x.id===studentId);
+  const slot = s && (s.agenda||[]).find(x=>x.id===slotId);
+  if(!s || !slot) return;
+  const presenca = getPresenca(s, slotId, dataISO);
+  const statusAtual = presenca ? presenca.status : null;
+  openModal(`
+    <h3>${escapeHtml(s.nome)}</h3>
+    <div class="meta" style="margin-bottom:14px;">${formatDate(dataISO)} às ${escapeHtml(slot.horario||'-')} ${slot.tipo==='unico'?'(horário único)':'(recorrente)'}</div>
+    <div class="field"><label>Presença nesta data</label>
+      <div class="row" style="gap:8px;flex-wrap:wrap;">
+        <button class="small" id="ocCompareceu" style="${statusAtual==='compareceu'?'background:var(--green);color:#0f172a;border-color:var(--green);':'background:var(--panel2);color:var(--text);border:1px solid var(--line);'}">✅ Compareceu</button>
+        <button class="small" id="ocFaltou" style="${statusAtual==='faltou'?'background:var(--red);color:#0f172a;border-color:var(--red);':'background:var(--panel2);color:var(--text);border:1px solid var(--line);'}">❌ Faltou</button>
+        <button class="small" id="ocReposicao" style="${statusAtual==='reposicao'?'background:var(--yellow);color:#0f172a;border-color:var(--yellow);':'background:var(--panel2);color:var(--text);border:1px solid var(--line);'}">🔁 Reposição</button>
+        ${statusAtual ? `<button class="ghost small" id="ocLimpar">Limpar marcação</button>` : ''}
       </div>
     </div>
-  `;
+    <div class="actions" style="justify-content:space-between;">
+      <button class="ghost small" id="ocEditar">Editar / excluir horário</button>
+      <button class="secondary" onclick="closeModal()">Fechar</button>
+    </div>
+  `);
+  function marcar(status){
+    setPresenca(s, slotId, dataISO, status);
+    saveDB(); closeModal(); render();
+  }
+  document.getElementById('ocCompareceu').onclick = ()=> marcar('compareceu');
+  document.getElementById('ocFaltou').onclick = ()=> marcar('faltou');
+  document.getElementById('ocReposicao').onclick = ()=> marcar('reposicao');
+  const ocLimpar = document.getElementById('ocLimpar');
+  if(ocLimpar) ocLimpar.onclick = ()=> marcar(null);
+  document.getElementById('ocEditar').onclick = ()=>{ openAgendaSlotModal(studentId, slotId); };
 }
 
 function openAgendaSlotModal(studentId, slotId, presetData){
@@ -1459,11 +1578,11 @@ function bindEvents(){
   const btnNovoHorario = document.getElementById('btnNovoHorario');
   if(btnNovoHorario) btnNovoHorario.onclick = ()=> openAgendaSlotModal(null, null);
 
-  document.querySelectorAll('[data-agenda-slot]').forEach(el=>{
+  document.querySelectorAll('[data-agenda-ocorrencia]').forEach(el=>{
     el.onclick = (ev)=>{
       ev.stopPropagation();
-      const [studentId, slotId] = el.dataset.agendaSlot.split('|');
-      openAgendaSlotModal(studentId, slotId);
+      const [studentId, slotId, dataISO] = el.dataset.agendaOcorrencia.split('|');
+      openOcorrenciaModal(studentId, slotId, dataISO);
     };
   });
 
@@ -1474,25 +1593,28 @@ function bindEvents(){
     };
   });
 
-  const agPrevMes = document.getElementById('agPrevMes');
-  if(agPrevMes) agPrevMes.onclick = ()=>{
-    state.agendaMes--;
-    if(state.agendaMes < 0){ state.agendaMes = 11; state.agendaAno--; }
+  const agPrev = document.getElementById('agPrev');
+  if(agPrev) agPrev.onclick = ()=>{
+    const d = new Date(state.agendaRef+'T00:00:00');
+    if(state.agendaView==='mes'){ d.setDate(1); d.setMonth(d.getMonth()-1); }
+    else if(state.agendaView==='semana'){ d.setDate(d.getDate()-7); }
+    else { d.setDate(d.getDate()-1); }
+    state.agendaRef = isoFromDateObj(d);
     render();
   };
-  const agNextMes = document.getElementById('agNextMes');
-  if(agNextMes) agNextMes.onclick = ()=>{
-    state.agendaMes++;
-    if(state.agendaMes > 11){ state.agendaMes = 0; state.agendaAno++; }
+  const agNext = document.getElementById('agNext');
+  if(agNext) agNext.onclick = ()=>{
+    const d = new Date(state.agendaRef+'T00:00:00');
+    if(state.agendaView==='mes'){ d.setDate(1); d.setMonth(d.getMonth()+1); }
+    else if(state.agendaView==='semana'){ d.setDate(d.getDate()+7); }
+    else { d.setDate(d.getDate()+1); }
+    state.agendaRef = isoFromDateObj(d);
     render();
   };
   const agHojeBtn = document.getElementById('agHojeBtn');
-  if(agHojeBtn) agHojeBtn.onclick = ()=>{
-    const hoje = new Date();
-    state.agendaAno = hoje.getFullYear();
-    state.agendaMes = hoje.getMonth();
-    render();
-  };
+  if(agHojeBtn) agHojeBtn.onclick = ()=>{ state.agendaRef = isoHoje(); render(); };
+  const agViewSelect = document.getElementById('agViewSelect');
+  if(agViewSelect) agViewSelect.onchange = ()=>{ state.agendaView = agViewSelect.value; render(); };
 
   const btnNewFicha = document.getElementById('btnNewFicha');
   if(btnNewFicha) btnNewFicha.onclick = ()=> openFichaModal();
