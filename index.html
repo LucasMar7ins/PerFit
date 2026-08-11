@@ -55,6 +55,10 @@
   .calWrap{overflow-x:auto;}
   .calGrid{display:grid;grid-template-columns:repeat(7,minmax(120px,1fr));gap:6px;min-width:760px;}
   .calCabecalho{text-align:center;font-weight:600;font-size:12px;color:var(--muted);padding-bottom:4px;text-transform:uppercase;}
+  .weekFichaGrid{display:grid;grid-template-columns:repeat(7,minmax(70px,1fr));gap:8px;}
+  .weekFichaCol{text-align:center;}
+  .weekFichaCol select{width:100%;text-align:center;}
+  @media (max-width:760px){ .weekFichaGrid{overflow-x:auto;min-width:0;grid-auto-flow:column;grid-auto-columns:minmax(64px,1fr);} }
   .calCell{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px;min-height:100px;display:flex;flex-direction:column;}
   .calCellVazia{background:transparent;border:none;}
   .calCellHoje{border-color:var(--accent);}
@@ -957,12 +961,16 @@ function slotChipHtml(a, dataISO){
   const quandoTexto = dataISO===isoHoje() ? 'hoje' : `no dia ${formatDate(dataISO)}`;
   const mensagemLembrete = `Oi ${a.aluno.nome}! Só lembrando que você tem treino marcado ${quandoTexto} às ${a.horario||''}. Te espero! 💪`;
   const linkLembrete = a.aluno.whatsapp ? whatsappLink(a.aluno.whatsapp, mensagemLembrete) : null;
+  const diaKeyOcorrencia = diaSemanaFromISODate(dataISO);
+  const fichaIdDoDia = (a.aluno.divisaoSemanal||{})[diaKeyOcorrencia];
+  const fichaDoDia = fichaIdDoDia ? (a.aluno.fichas||[]).find(f=>f.id===fichaIdDoDia) : null;
   return `
     <div class="agendaSlot${statusClass}" data-agenda-ocorrencia="${a.aluno.id}|${a.id}|${dataISO}" title="Clique para marcar presença ou editar">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:4px;">
         <span><span class="hora">${escapeHtml(a.horario||'-')}</span> ${escapeHtml(a.aluno.nome)}</span>
         ${linkLembrete ? `<a href="${linkLembrete}" target="_blank" rel="noopener" class="noprint" data-agenda-lembrete title="Lembrar treino no WhatsApp" style="text-decoration:none;flex-shrink:0;">💬</a>` : ''}
       </div>
+      ${fichaDoDia ? `<div style="opacity:.85;">🏋️ Ficha ${escapeHtml(fichaDoDia.letra)}</div>` : ''}
       ${a.tipo==='unico' ? `<div style="opacity:.75;">única</div>` : ''}
     </div>
   `;
@@ -1402,6 +1410,7 @@ function renderStudentDetail(id){
   if(!s){ state.studentId=null; return renderStudentsList(); }
   s.fichas = s.fichas || [];
   s.avaliacoes = s.avaliacoes || [];
+  s.divisaoSemanal = s.divisaoSemanal || {};
   const avaliacoes = s.avaliacoes.slice().sort((a,b)=> (b.data||'').localeCompare(a.data||''));
   const avaliacoesAsc = s.avaliacoes.slice().sort((a,b)=> (a.data||'').localeCompare(b.data||''));
   const primeira = avaliacoesAsc[0];
@@ -1529,12 +1538,15 @@ function renderStudentDetail(id){
     `;
   }).join('');
 
+  const diaKeyHoje = diaSemanaFromISODate(isoHoje());
+  const fichaIdHoje = s.divisaoSemanal[diaKeyHoje] || '';
   const fichas = s.fichas.slice().sort((a,b)=> (b.criadoEm||'').localeCompare(a.criadoEm||''));
   const fichasHtml = fichas.map(f=>{
     const total = f.exercicios.length;
     const feitos = f.exercicios.filter(e=>e.feito).length;
+    const ehFichaDeHoje = f.id === fichaIdHoje;
     return `
-    <div class="card">
+    <div class="card" style="${ehFichaDeHoje?'border-color:var(--accent);':''}">
       <div class="fichaHeader">
         <div class="row">
           <div class="fichaTag">${escapeHtml(f.letra)}</div>
@@ -1545,6 +1557,7 @@ function renderStudentDetail(id){
           <span class="tag ${f.ativa?'green':'gray'}">${f.ativa?'ATIVA':'ARQUIVADA'}</span>
           <span class="tag ${feitos===total && total>0 ?'green':'gray'}">${feitos}/${total} concluído(s)</span>
           <span class="tag gray" id="volTotal-${f.id}">🏋️ Volume: ${formatVolume(volumeTotalFicha(f))}kg</span>
+          ${ehFichaDeHoje ? `<span class="tag" style="background:var(--accent);color:#0f172a;">📅 Ficha de hoje</span>` : ''}
         </div>
         <div class="row noprint">
           ${f.ativa ? `<button class="small" data-live-start="${f.id}">▶️ Iniciar treino</button>` : ''}
@@ -1633,6 +1646,31 @@ function renderStudentDetail(id){
     <div class="collapsibleContent" style="display:${state.collapsedSections.avaliacoes?'none':'block'};">
       ${avaliacoesHtml || '<div class="empty">Nenhuma avaliação registrada. Clique em "+ Nova avaliação" para lançar peso, altura, circunferências e anamnese inicial.</div>'}
     </div>
+
+    ${(()=>{
+      const fichasAtivas = s.fichas.filter(f=>f.ativa);
+      if(fichasAtivas.length===0) return '';
+      return `
+    <div class="sectionTitle">
+      <span class="collapseToggle" data-toggle-section="divisaoSemanal"><span class="collapseArrow">${state.collapsedSections.divisaoSemanal?'▶':'▼'}</span> 🗓️ Divisão semanal de treino</span>
+    </div>
+    <div class="collapsibleContent noprint" style="display:${state.collapsedSections.divisaoSemanal?'none':'block'};">
+      <div class="card weekFichaGrid">
+        ${DIAS_SEMANA_ORDEM.map((diaKey,i)=>{
+          const fichaId = s.divisaoSemanal[diaKey] || '';
+          return `
+          <div class="weekFichaCol">
+            <div class="calCabecalho">${DIAS_SEMANA_CURTO[i]}</div>
+            <select data-divisao-dia="${diaKey}" title="${fichaId ? escapeAttr((fichasAtivas.find(f=>f.id===fichaId)||{}).nome||'') : 'Descanso'}">
+              <option value="">Descanso</option>
+              ${fichasAtivas.map(f=>`<option value="${f.id}" ${fichaId===f.id?'selected':''} title="${escapeAttr(f.nome||('Treino '+f.letra))}">Ficha ${escapeHtml(f.letra)}</option>`).join('')}
+            </select>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+      `;
+    })()}
 
     <div class="sectionTitle">
       <span class="collapseToggle" data-toggle-section="fichas"><span class="collapseArrow">${state.collapsedSections.fichas?'▶':'▼'}</span> 🏋️ Fichas de treino</span>
@@ -1956,6 +1994,17 @@ function bindEvents(){
     el.onclick = ()=>{
       const key = el.dataset.toggleSection;
       state.collapsedSections[key] = !state.collapsedSections[key];
+      render();
+    };
+  });
+
+  document.querySelectorAll('[data-divisao-dia]').forEach(el=>{
+    el.onchange = ()=>{
+      const s = db.students.find(x=>x.id===state.studentId);
+      if(!s) return;
+      s.divisaoSemanal = s.divisaoSemanal || {};
+      s.divisaoSemanal[el.dataset.divisaoDia] = el.value;
+      saveDB();
       render();
     };
   });
