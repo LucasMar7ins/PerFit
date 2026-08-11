@@ -1606,6 +1606,26 @@ function renderStudentDetail(id){
       <button class="danger" id="btnDelStudent">Excluir aluno</button>
     </div>
 
+    ${(()=>{
+      const fichasAtivas = s.fichas.filter(f=>f.ativa);
+      if(fichasAtivas.length===0) return '';
+      return `
+    <div class="card weekFichaGrid noprint" style="margin-bottom:18px;">
+      ${DIAS_SEMANA_ORDEM.map((diaKey,i)=>{
+        const fichaId = s.divisaoSemanal[diaKey] || '';
+        return `
+        <div class="weekFichaCol">
+          <div class="calCabecalho">${DIAS_SEMANA_CURTO[i]}</div>
+          <select data-divisao-dia="${diaKey}" title="${fichaId ? escapeAttr((fichasAtivas.find(f=>f.id===fichaId)||{}).nome||'') : 'Descanso'}">
+            <option value="">Descanso</option>
+            ${fichasAtivas.map(f=>`<option value="${f.id}" ${fichaId===f.id?'selected':''} title="${escapeAttr(f.nome||('Treino '+f.letra))}">Ficha ${escapeHtml(f.letra)}</option>`).join('')}
+          </select>
+        </div>`;
+      }).join('')}
+    </div>
+      `;
+    })()}
+
     <div class="sectionTitle">
       <span class="collapseToggle" data-toggle-section="anamnese"><span class="collapseArrow">${state.collapsedSections.anamnese?'▶':'▼'}</span> 🩺 Anamnese completa</span>
       <button class="secondary small noprint" id="btnEditAnamnese" style="margin-left:auto;">${anamneseRespondida(s)?'Editar anamnese':'+ Preencher anamnese'}</button>
@@ -1646,31 +1666,6 @@ function renderStudentDetail(id){
     <div class="collapsibleContent" style="display:${state.collapsedSections.avaliacoes?'none':'block'};">
       ${avaliacoesHtml || '<div class="empty">Nenhuma avaliação registrada. Clique em "+ Nova avaliação" para lançar peso, altura, circunferências e anamnese inicial.</div>'}
     </div>
-
-    ${(()=>{
-      const fichasAtivas = s.fichas.filter(f=>f.ativa);
-      if(fichasAtivas.length===0) return '';
-      return `
-    <div class="sectionTitle">
-      <span class="collapseToggle" data-toggle-section="divisaoSemanal"><span class="collapseArrow">${state.collapsedSections.divisaoSemanal?'▶':'▼'}</span> 🗓️ Divisão semanal de treino</span>
-    </div>
-    <div class="collapsibleContent noprint" style="display:${state.collapsedSections.divisaoSemanal?'none':'block'};">
-      <div class="card weekFichaGrid">
-        ${DIAS_SEMANA_ORDEM.map((diaKey,i)=>{
-          const fichaId = s.divisaoSemanal[diaKey] || '';
-          return `
-          <div class="weekFichaCol">
-            <div class="calCabecalho">${DIAS_SEMANA_CURTO[i]}</div>
-            <select data-divisao-dia="${diaKey}" title="${fichaId ? escapeAttr((fichasAtivas.find(f=>f.id===fichaId)||{}).nome||'') : 'Descanso'}">
-              <option value="">Descanso</option>
-              ${fichasAtivas.map(f=>`<option value="${f.id}" ${fichaId===f.id?'selected':''} title="${escapeAttr(f.nome||('Treino '+f.letra))}">Ficha ${escapeHtml(f.letra)}</option>`).join('')}
-            </select>
-          </div>`;
-        }).join('')}
-      </div>
-    </div>
-      `;
-    })()}
 
     <div class="sectionTitle">
       <span class="collapseToggle" data-toggle-section="fichas"><span class="collapseArrow">${state.collapsedSections.fichas?'▶':'▼'}</span> 🏋️ Fichas de treino</span>
