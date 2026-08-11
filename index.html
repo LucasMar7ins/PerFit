@@ -71,6 +71,7 @@
   .agendaSlot-compareceu{background:rgba(52,211,153,.20);border-color:var(--green);}
   .agendaSlot-faltou{background:rgba(248,113,113,.20);border-color:var(--red);}
   .agendaSlot-reposicao{background:rgba(251,191,36,.20);border-color:var(--yellow);}
+  .agendaSlot-bloqueio{background:rgba(148,163,184,.12);border-color:var(--line);color:var(--muted);font-style:italic;}
   .legendDot{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;vertical-align:middle;}
   .banner{border:1px solid var(--yellow);background:rgba(251,191,36,.08);border-radius:9px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--text);display:flex;align-items:center;gap:10px;}
   .compareCol{flex:1;min-width:0;}
@@ -375,12 +376,13 @@ function buildDemoStudent(){
 function loadDB(){
   const raw = localStorage.getItem(DB_KEY);
   if(!raw){
-    const seed = { students:[buildDemoStudent()], exercises: defaultExerciseLibrary() };
+    const seed = { students:[buildDemoStudent()], exercises: defaultExerciseLibrary(), bloqueios: [] };
     localStorage.setItem(DB_KEY, JSON.stringify(seed));
     localStorage.setItem(MIGR_KEY, '1');
     return seed;
   }
   const data = JSON.parse(raw);
+  if(!data.bloqueios) data.bloqueios = [];
   // migração automática: quem já usava a versão antiga (poucos exercícios) recebe a biblioteca completa
   if(localStorage.getItem(MIGR_KEY) !== '1'){
     const existing = new Set((data.exercises||[]).map(e=>e.nome.trim().toLowerCase()));
@@ -818,8 +820,21 @@ function ocorrenciasDoDia(alunos, dataISO, diaKey){
   out.sort((a,b)=> (a.horario||'').localeCompare(b.horario||''));
   return out.map(a=>{
     const presenca = getPresenca(a.aluno, a.id, dataISO);
-    return {...a, presencaStatus: presenca ? presenca.status : null};
+    return {...a, _tipoItem:'aluno', presencaStatus: presenca ? presenca.status : null};
   });
+}
+
+function bloqueiosDoDia(dataISO, diaKey){
+  return (db.bloqueios||[]).filter(b=>{
+    if(b.tipo==='unico') return b.data===dataISO;
+    return b.dia===diaKey;
+  }).map(b=>({...b, _tipoItem:'bloqueio', horario:b.horarioInicio||''}));
+}
+
+function itensDoDia(alunos, dataISO, diaKey){
+  return ocorrenciasDoDia(alunos, dataISO, diaKey)
+    .concat(bloqueiosDoDia(dataISO, diaKey))
+    .sort((a,b)=> (a.horario||'').localeCompare(b.horario||''));
 }
 
 function slotChipHtml(a, dataISO){
@@ -838,6 +853,18 @@ function slotChipHtml(a, dataISO){
   `;
 }
 
+function bloqueioChipHtml(b){
+  return `
+    <div class="agendaSlot agendaSlot-bloqueio" data-bloqueio="${b.id}" title="Clique para editar ou remover este bloqueio">
+      <span class="hora">${escapeHtml(b.horarioInicio||'-')}${b.horarioFim?'–'+escapeHtml(b.horarioFim):''}</span> 🚫 ${escapeHtml(b.titulo||'Indisponível')}
+    </div>
+  `;
+}
+
+function itemChipHtml(item, dataISO){
+  return item._tipoItem==='bloqueio' ? bloqueioChipHtml(item) : slotChipHtml(item, dataISO);
+}
+
 function buildMesGrid(ano, mes, alunos, hojeISO){
   const primeiroDia = new Date(ano, mes, 1);
   const totalDias = new Date(ano, mes+1, 0).getDate();
@@ -852,7 +879,7 @@ function buildMesGrid(ano, mes, alunos, hojeISO){
     if(d===null) return `<div class="calCell calCellVazia"></div>`;
     const dataISO = `${ano}-${String(mes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const diaKey = DIAS_SEMANA_ORDEM[idx % 7];
-    const slots = ocorrenciasDoDia(alunos, dataISO, diaKey);
+    const itens = itensDoDia(alunos, dataISO, diaKey);
     const ehHoje = dataISO === hojeISO;
     return `
       <div class="calCell ${ehHoje?'calCellHoje':''}">
@@ -860,7 +887,7 @@ function buildMesGrid(ano, mes, alunos, hojeISO){
           <span class="calNum">${d}</span>
           <span class="calAdd noprint" data-cal-add="${dataISO}" title="Adicionar horário neste dia">+</span>
         </div>
-        <div class="calCellBody">${slots.map(a=>slotChipHtml(a, dataISO)).join('')}</div>
+        <div class="calCellBody">${itens.map(item=>itemChipHtml(item, dataISO)).join('')}</div>
       </div>
     `;
   }).join('');
@@ -874,7 +901,7 @@ function buildSemanaGrid(inicioSemana, alunos, hojeISO){
     d.setDate(inicioSemana.getDate()+i);
     const dataISO = isoFromDateObj(d);
     const diaKey = DIAS_SEMANA_ORDEM[i];
-    const slots = ocorrenciasDoDia(alunos, dataISO, diaKey);
+    const itens = itensDoDia(alunos, dataISO, diaKey);
     const ehHoje = dataISO === hojeISO;
     cols.push(`
       <div class="calCell calCellSemana ${ehHoje?'calCellHoje':''}">
@@ -882,7 +909,7 @@ function buildSemanaGrid(inicioSemana, alunos, hojeISO){
           <span class="calNum">${DIAS_SEMANA_CURTO[i]} ${d.getDate()}/${d.getMonth()+1}</span>
           <span class="calAdd noprint" data-cal-add="${dataISO}" title="Adicionar horário neste dia">+</span>
         </div>
-        <div class="calCellBody" style="max-height:340px;">${slots.map(a=>slotChipHtml(a, dataISO)).join('') || '<div class="meta" style="text-align:center;">-</div>'}</div>
+        <div class="calCellBody" style="max-height:340px;">${itens.map(item=>itemChipHtml(item, dataISO)).join('') || '<div class="meta" style="text-align:center;">-</div>'}</div>
       </div>
     `);
   }
@@ -891,8 +918,8 @@ function buildSemanaGrid(inicioSemana, alunos, hojeISO){
 
 function buildDiaView(dataISO, alunos){
   const diaKey = diaSemanaFromISODate(dataISO);
-  const slots = ocorrenciasDoDia(alunos, dataISO, diaKey);
-  return `<div class="card">${slots.length ? slots.map(a=>slotChipHtml(a, dataISO)).join('') : '<div class="empty">Nenhum horário marcado para este dia.</div>'}</div>`;
+  const itens = itensDoDia(alunos, dataISO, diaKey);
+  return `<div class="card">${itens.length ? itens.map(item=>itemChipHtml(item, dataISO)).join('') : '<div class="empty">Nenhum horário marcado para este dia.</div>'}</div>`;
 }
 
 function renderAgenda(){
@@ -935,12 +962,14 @@ function renderAgenda(){
         <option value="semana" ${state.agendaView==='semana'?'selected':''}>Semana</option>
         <option value="mes" ${state.agendaView==='mes'?'selected':''}>Mês</option>
       </select>
-      <button id="btnNovoHorario" style="margin-left:auto;">+ Adicionar horário</button>
+      <button class="secondary" id="btnNovoBloqueio" style="margin-left:auto;">🚫 Bloquear horário</button>
+      <button id="btnNovoHorario">+ Adicionar horário</button>
     </div>
-    <div class="row noprint" style="margin-bottom:14px;gap:16px;font-size:12px;color:var(--muted);align-items:center;">
+    <div class="row noprint" style="margin-bottom:14px;gap:16px;font-size:12px;color:var(--muted);align-items:center;flex-wrap:wrap;">
       <span><span class="legendDot" style="background:var(--green);"></span>Compareceu</span>
       <span><span class="legendDot" style="background:var(--red);"></span>Faltou</span>
       <span><span class="legendDot" style="background:var(--yellow);"></span>Reposição</span>
+      <span><span class="legendDot" style="background:var(--muted);"></span>Indisponível</span>
       <span>Clique num horário para marcar presença</span>
     </div>
     ${corpo}
@@ -979,6 +1008,82 @@ function openOcorrenciaModal(studentId, slotId, dataISO){
   const ocLimpar = document.getElementById('ocLimpar');
   if(ocLimpar) ocLimpar.onclick = ()=> marcar(null);
   document.getElementById('ocEditar').onclick = ()=>{ openAgendaSlotModal(studentId, slotId); };
+}
+
+function openBloqueioModal(bloqueioId, presetData){
+  const bloqueio = bloqueioId ? (db.bloqueios||[]).find(x=>x.id===bloqueioId) : null;
+  const editing = !!bloqueio;
+  const tipoAtual = editing ? (bloqueio.tipo||'recorrente') : (presetData ? 'unico' : 'recorrente');
+  const diaPadrao = editing ? bloqueio.dia : (presetData ? diaSemanaFromISODate(presetData) : DIAS_SEMANA[0].key);
+  const dataPadrao = editing ? (bloqueio.data||'') : (presetData||'');
+  openModal(`
+    <h3>${editing?'Editar':'Bloquear'} horário</h3>
+    <div class="field"><label>Título</label><input id="blTitulo" value="${editing?escapeAttr(bloqueio.titulo||''):''}" placeholder="Ex: Almoço, Compromisso pessoal"></div>
+    <div class="field"><label>Repetição</label>
+      <select id="blTipo">
+        <option value="recorrente" ${tipoAtual==='recorrente'?'selected':''}>🔁 Toda semana (recorrente)</option>
+        <option value="unico" ${tipoAtual==='unico'?'selected':''}>📅 Só uma vez (data específica)</option>
+      </select>
+    </div>
+    <div class="row">
+      <div class="field" style="flex:1" id="blDiaWrap"><label>Dia da semana</label>
+        <select id="blDia">
+          ${DIAS_SEMANA.map(d=>`<option value="${d.key}" ${diaPadrao===d.key?'selected':''}>${d.label}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field" style="flex:1" id="blDataWrap"><label>Data</label>
+        <input id="blData" type="date" value="${escapeAttr(dataPadrao)}">
+      </div>
+    </div>
+    <div class="row">
+      <div class="field" style="flex:1"><label>Início</label><input id="blInicio" type="time" value="${editing?escapeAttr(bloqueio.horarioInicio||''):''}"></div>
+      <div class="field" style="flex:1"><label>Fim (opcional)</label><input id="blFim" type="time" value="${editing?escapeAttr(bloqueio.horarioFim||''):''}"></div>
+    </div>
+    <div class="actions">
+      ${editing?`<button class="danger" id="blDel" style="margin-right:auto;">Excluir</button>`:''}
+      <button class="secondary" onclick="closeModal()">Cancelar</button>
+      <button id="blSave">Salvar</button>
+    </div>
+  `);
+
+  function syncTipoVisibility(){
+    const tipo = document.getElementById('blTipo').value;
+    document.getElementById('blDiaWrap').style.display = tipo==='recorrente' ? '' : 'none';
+    document.getElementById('blDataWrap').style.display = tipo==='unico' ? '' : 'none';
+  }
+  document.getElementById('blTipo').onchange = syncTipoVisibility;
+  syncTipoVisibility();
+
+  document.getElementById('blSave').onclick = ()=>{
+    const titulo = document.getElementById('blTitulo').value.trim() || 'Indisponível';
+    const tipo = document.getElementById('blTipo').value;
+    const horarioInicio = document.getElementById('blInicio').value;
+    const horarioFim = document.getElementById('blFim').value;
+    if(!horarioInicio){ showToast('Informe o horário de início.', 'error'); return; }
+    let dia = '', data = '';
+    if(tipo==='recorrente'){
+      dia = document.getElementById('blDia').value;
+    } else {
+      data = document.getElementById('blData').value;
+      if(!data){ showToast('Informe a data.', 'error'); return; }
+      dia = diaSemanaFromISODate(data);
+    }
+    if(!db.bloqueios) db.bloqueios = [];
+    if(editing){
+      bloqueio.titulo=titulo; bloqueio.tipo=tipo; bloqueio.dia=dia; bloqueio.data=data; bloqueio.horarioInicio=horarioInicio; bloqueio.horarioFim=horarioFim;
+    } else {
+      db.bloqueios.push({id:uid(), titulo, tipo, dia, data, horarioInicio, horarioFim});
+    }
+    saveDB(); closeModal(); render();
+  };
+  if(editing){
+    document.getElementById('blDel').onclick = ()=>{
+      showConfirm('Remover este bloqueio?', ()=>{
+        db.bloqueios = db.bloqueios.filter(x=>x.id!==bloqueio.id);
+        saveDB(); closeModal(); render();
+      }, {danger:true, confirmLabel:'Excluir'});
+    };
+  }
 }
 
 function openAgendaSlotModal(studentId, slotId, presetData){
@@ -1548,7 +1653,7 @@ function importBackupFile(file){
         return;
       }
       showConfirm('Isso vai SUBSTITUIR todos os dados atuais por este backup. Deseja continuar?', ()=>{
-        db = { students: parsed.students, exercises: parsed.exercises };
+        db = { students: parsed.students, exercises: parsed.exercises, bloqueios: parsed.bloqueios||[] };
         saveDB();
         localStorage.setItem(MIGR_KEY, '1');
         showToast('Backup restaurado com sucesso.', 'success');
@@ -1625,11 +1730,21 @@ function bindEvents(){
   const btnNovoHorario = document.getElementById('btnNovoHorario');
   if(btnNovoHorario) btnNovoHorario.onclick = ()=> openAgendaSlotModal(null, null);
 
+  const btnNovoBloqueio = document.getElementById('btnNovoBloqueio');
+  if(btnNovoBloqueio) btnNovoBloqueio.onclick = ()=> openBloqueioModal(null, null);
+
   document.querySelectorAll('[data-agenda-ocorrencia]').forEach(el=>{
     el.onclick = (ev)=>{
       ev.stopPropagation();
       const [studentId, slotId, dataISO] = el.dataset.agendaOcorrencia.split('|');
       openOcorrenciaModal(studentId, slotId, dataISO);
+    };
+  });
+
+  document.querySelectorAll('[data-bloqueio]').forEach(el=>{
+    el.onclick = (ev)=>{
+      ev.stopPropagation();
+      openBloqueioModal(el.dataset.bloqueio, null);
     };
   });
 
