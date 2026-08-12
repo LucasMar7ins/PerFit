@@ -434,7 +434,7 @@ function uid(){ return Math.random().toString(36).slice(2,10); }
 
 let db = loadDB();
 let currentUid = null;
-let state = { tab:'alunos', studentId:null, chartMetric:'peso', studentFilter:'ativos', collapsedSections: { anamnese:true, evolucao:true, avaliacoes:true, fichas:false, cargas:false }, agendaView:null, agendaRef:null, printRecibo:null, printAvaliacao:null, treinoAoVivo:null, exerciseCollapsedGroups:{} };
+let state = { tab:'alunos', studentId:null, chartMetric:'peso', studentFilter:'ativos', collapsedSections: { anamnese:true, evolucao:true, avaliacoes:true, fichas:false, cargas:false }, agendaView:null, agendaRef:null, printRecibo:null, printAvaliacao:null, treinoAoVivo:null, exerciseCollapsedGroups:{}, showFichasArquivadas:false };
 
 // ---------- REAVALIAÇÃO (lembrete) ----------
 const REAVAL_DIAS_LIMITE = 45; // ~6-7 semanas sem atualizar medidas
@@ -1630,7 +1630,9 @@ function renderStudentDetail(id){
   const diaKeyHoje = diaSemanaFromISODate(isoHoje());
   const fichaIdHoje = s.divisaoSemanal[diaKeyHoje] || '';
   const fichas = s.fichas.slice().sort((a,b)=> (b.criadoEm||'').localeCompare(a.criadoEm||''));
-  const fichasHtml = fichas.map(f=>{
+  const fichasVisiveis = fichas.filter(f=>f.ativa);
+  const fichasArquivadasList = fichas.filter(f=>!f.ativa);
+  const buildFichaCard = f=>{
     const total = f.exercicios.length;
     const feitos = f.exercicios.filter(e=>e.feito).length;
     const ehFichaDeHoje = f.id === fichaIdHoje;
@@ -1680,7 +1682,9 @@ function renderStudentDetail(id){
         </tbody>
       </table>
     </div>
-  `;}).join('');
+  `;};
+  const fichasHtml = fichasVisiveis.map(buildFichaCard).join('');
+  const fichasArquivadasHtml = fichasArquivadasList.map(buildFichaCard).join('');
 
   return `
     <span class="backBtn noprint" id="backToStudents">&larr; Voltar para Alunos</span>
@@ -1759,10 +1763,17 @@ function renderStudentDetail(id){
 
     <div class="sectionTitle">
       <span class="collapseToggle" data-toggle-section="fichas"><span class="collapseArrow">${state.collapsedSections.fichas?'▶':'▼'}</span> 🏋️ Fichas de treino</span>
-      ${fichas.length>0 ? `<span class="tag gray" id="volTotalAluno" style="margin-left:auto;">🏋️ Volume total (todas as fichas): ${formatVolume(fichas.reduce((sum,f)=>sum+volumeTotalFicha(f),0))}kg</span>` : ''}
+      <button class="ghost small noprint" id="btnToggleFichasArquivadas" style="margin-left:auto;">📦 Fichas arquivadas (${fichasArquivadasList.length})</button>
+      ${fichas.length>0 ? `<span class="tag gray" id="volTotalAluno">🏋️ Volume total (todas as fichas): ${formatVolume(fichas.reduce((sum,f)=>sum+volumeTotalFicha(f),0))}kg</span>` : ''}
     </div>
     <div class="collapsibleContent" style="display:${state.collapsedSections.fichas?'none':'block'};">
-      ${fichasHtml || '<div class="empty">Nenhuma ficha criada para este aluno ainda.</div>'}
+      ${fichasHtml || '<div class="empty">Nenhuma ficha ativa para este aluno. Crie uma nova ou veja as fichas arquivadas.</div>'}
+      ${state.showFichasArquivadas ? `
+        <div class="sectionTitle noprint" style="margin-top:18px;">
+          <span>📦 Fichas arquivadas</span>
+        </div>
+        ${fichasArquivadasHtml || '<div class="empty">Nenhuma ficha arquivada ainda.</div>'}
+      ` : ''}
     </div>
 
     <div class="sectionTitle">
@@ -2081,6 +2092,12 @@ function bindEvents(){
 
   const btnNewFicha = document.getElementById('btnNewFicha');
   if(btnNewFicha) btnNewFicha.onclick = ()=> openFichaModal();
+
+  const btnToggleFichasArquivadas = document.getElementById('btnToggleFichasArquivadas');
+  if(btnToggleFichasArquivadas) btnToggleFichasArquivadas.onclick = ()=>{
+    state.showFichasArquivadas = !state.showFichasArquivadas;
+    render();
+  };
 
   const chartMetricSelect = document.getElementById('chartMetricSelect');
   if(chartMetricSelect) chartMetricSelect.onchange = ()=>{
