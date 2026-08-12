@@ -434,7 +434,7 @@ function uid(){ return Math.random().toString(36).slice(2,10); }
 
 let db = loadDB();
 let currentUid = null;
-let state = { tab:'alunos', studentId:null, chartMetric:'peso', studentFilter:'ativos', collapsedSections: { anamnese:true, evolucao:true, avaliacoes:true, fichas:false, cargas:false }, agendaView:null, agendaRef:null, printRecibo:null, printAvaliacao:null, treinoAoVivo:null, exerciseCollapsedGroups:{}, showFichasArquivadas:false };
+let state = { tab:'alunos', studentId:null, chartMetric:'peso', studentFilter:'ativos', collapsedSections: { anamnese:true, evolucao:true, avaliacoes:true, fichas:false, cargas:false }, agendaView:null, agendaRef:null, printRecibo:null, printAvaliacao:null, treinoAoVivo:null, exerciseCollapsedGroups:{} };
 
 // ---------- REAVALIAÇÃO (lembrete) ----------
 const REAVAL_DIAS_LIMITE = 45; // ~6-7 semanas sem atualizar medidas
@@ -1697,6 +1697,7 @@ function renderStudentDetail(id){
       <button class="secondary" id="btnPagamento">💳 Pagamento</button>
       ${s.whatsapp?`<button class="ghost" onclick="window.open('${whatsappLink(s.whatsapp)}','_blank')">💬 Chamar no WhatsApp</button>`:''}
       <button class="ghost" onclick="window.print()">Imprimir / Exportar PDF</button>
+      <button class="ghost small" id="btnFichasArquivadas">📦 Fichas arquivadas (${fichasArquivadasList.length})</button>
       <button class="danger" id="btnDelStudent">Excluir aluno</button>
     </div>
 
@@ -1763,17 +1764,10 @@ function renderStudentDetail(id){
 
     <div class="sectionTitle">
       <span class="collapseToggle" data-toggle-section="fichas"><span class="collapseArrow">${state.collapsedSections.fichas?'▶':'▼'}</span> 🏋️ Fichas de treino</span>
-      <button class="ghost small noprint" id="btnToggleFichasArquivadas" style="margin-left:auto;">📦 Fichas arquivadas (${fichasArquivadasList.length})</button>
-      ${fichas.length>0 ? `<span class="tag gray" id="volTotalAluno">🏋️ Volume total (todas as fichas): ${formatVolume(fichas.reduce((sum,f)=>sum+volumeTotalFicha(f),0))}kg</span>` : ''}
+      ${fichas.length>0 ? `<span class="tag gray" id="volTotalAluno" style="margin-left:auto;">🏋️ Volume total (todas as fichas): ${formatVolume(fichas.reduce((sum,f)=>sum+volumeTotalFicha(f),0))}kg</span>` : ''}
     </div>
     <div class="collapsibleContent" style="display:${state.collapsedSections.fichas?'none':'block'};">
       ${fichasHtml || '<div class="empty">Nenhuma ficha ativa para este aluno. Crie uma nova ou veja as fichas arquivadas.</div>'}
-      ${state.showFichasArquivadas ? `
-        <div class="sectionTitle noprint" style="margin-top:18px;">
-          <span>📦 Fichas arquivadas</span>
-        </div>
-        ${fichasArquivadasHtml || '<div class="empty">Nenhuma ficha arquivada ainda.</div>'}
-      ` : ''}
     </div>
 
     <div class="sectionTitle">
@@ -2093,11 +2087,8 @@ function bindEvents(){
   const btnNewFicha = document.getElementById('btnNewFicha');
   if(btnNewFicha) btnNewFicha.onclick = ()=> openFichaModal();
 
-  const btnToggleFichasArquivadas = document.getElementById('btnToggleFichasArquivadas');
-  if(btnToggleFichasArquivadas) btnToggleFichasArquivadas.onclick = ()=>{
-    state.showFichasArquivadas = !state.showFichasArquivadas;
-    render();
-  };
+  const btnFichasArquivadas = document.getElementById('btnFichasArquivadas');
+  if(btnFichasArquivadas) btnFichasArquivadas.onclick = ()=> openFichasArquivadasModal(state.studentId);
 
   const chartMetricSelect = document.getElementById('chartMetricSelect');
   if(chartMetricSelect) chartMetricSelect.onchange = ()=>{
@@ -2544,6 +2535,63 @@ function openLixeiraModal(){
         saveDB();
         openLixeiraModal();
       }, {danger:true, confirmLabel:'Excluir definitivamente'});
+    };
+  });
+}
+
+function openFichasArquivadasModal(studentId){
+  const s = db.students.find(x=>x.id===studentId);
+  if(!s) return;
+  s.fichas = s.fichas || [];
+  const arquivadas = s.fichas.filter(f=>!f.ativa).slice().sort((a,b)=> (b.criadoEm||'').localeCompare(a.criadoEm||''));
+  openModal(`
+    <h3>Fichas arquivadas</h3>
+    <div class="meta" style="margin-bottom:14px;">Fichas antigas que não estão mais em uso, mas ficam guardadas aqui para consulta.</div>
+    ${arquivadas.length===0 ? '<div class="meta">Nenhuma ficha arquivada.</div>' : arquivadas.map(f=>{
+      const total = f.exercicios.length;
+      return `
+      <div class="card" style="margin-bottom:10px;padding:12px;">
+        <div class="row" style="justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div>
+            <div style="font-weight:600;">${escapeHtml(f.letra)} — ${escapeHtml(f.nome||('Treino '+f.letra))}</div>
+            <div class="meta">${total} exercício(s) • criado em ${formatDate(f.criadoEm)} • Volume: ${formatVolume(volumeTotalFicha(f))}kg</div>
+          </div>
+          <div class="row" style="gap:6px;flex-wrap:wrap;">
+            <button class="secondary small" data-reativar-ficha="${f.id}">Reativar</button>
+            <button class="ghost small" data-print-ficha-arq="${f.id}">🖨️ Imprimir</button>
+            <button class="danger small" data-del-ficha-arq="${f.id}">Excluir</button>
+          </div>
+        </div>
+      </div>
+    `;}).join('')}
+    <div class="actions"><button class="secondary" onclick="closeModal()">Fechar</button></div>
+  `);
+  document.querySelectorAll('[data-reativar-ficha]').forEach(el=>{
+    el.onclick = ()=>{
+      const f = s.fichas.find(x=>x.id===el.dataset.reativarFicha);
+      if(!f) return;
+      f.ativa = true;
+      saveDB();
+      closeModal();
+      render();
+      showToast('Ficha reativada.', 'success');
+    };
+  });
+  document.querySelectorAll('[data-print-ficha-arq]').forEach(el=>{
+    el.onclick = ()=>{
+      closeModal();
+      state.printFicha = { studentId: s.id, fichaId: el.dataset.printFichaArq };
+      render();
+    };
+  });
+  document.querySelectorAll('[data-del-ficha-arq]').forEach(el=>{
+    el.onclick = ()=>{
+      showConfirm('Excluir esta ficha arquivada definitivamente?', ()=>{
+        s.fichas = s.fichas.filter(x=>x.id!==el.dataset.delFichaArq);
+        saveDB();
+        render();
+        openFichasArquivadasModal(studentId);
+      }, {danger:true, confirmLabel:'Excluir'});
     };
   });
 }
