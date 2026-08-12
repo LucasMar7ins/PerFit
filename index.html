@@ -150,6 +150,8 @@
   .collapseArrow{display:inline-block;font-size:11px;color:var(--muted);transition:transform .15s;width:10px;}
   @media print{ .collapsibleContent{display:block !important;} }
   .toastContainer{position:fixed;top:16px;right:16px;z-index:200;display:flex;flex-direction:column;gap:8px;max-width:320px;}
+  .syncWarningBanner{position:fixed;top:0;left:0;right:0;z-index:300;background:var(--yellow);color:#1a1a1a;text-align:center;font-size:13px;font-weight:600;padding:9px 14px;display:none;}
+  .syncWarningBanner.show{display:block;}
   .toast{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);color:var(--text);padding:12px 14px;border-radius:8px;font-size:13px;box-shadow:0 6px 18px rgba(0,0,0,.35);opacity:0;transform:translateX(24px);transition:opacity .25s ease,transform .25s ease;}
   .toast.show{opacity:1;transform:translateX(0);}
   .toast.toast-success{border-left-color:var(--green);}
@@ -197,7 +199,7 @@
   }
 
   @media print{
-    nav, .noprint, .toastContainer{display:none !important;}
+    nav, .noprint, .toastContainer, .syncWarningBanner{display:none !important;}
     body{background:#fff;color:#000;}
     main{padding:0;max-width:100%;}
     .card{border:1px solid #ccc;background:#fff;}
@@ -226,6 +228,7 @@
   <div class="modal" id="modalBody"></div>
 </div>
 <div class="toastContainer" id="toastContainer"></div>
+<div class="syncWarningBanner noprint" id="syncWarning">⚠️ Sem conexão com a nuvem — suas alterações estão sendo salvas só neste aparelho até a internet voltar.</div>
 
 <script>
 // ---------- DATA LAYER ----------
@@ -3361,6 +3364,14 @@ window.__showLogin = function(){
   currentUid = null;
   renderLoginScreen();
 };
+window.__showSyncWarning = function(){
+  const el = document.getElementById('syncWarning');
+  if(el) el.classList.add('show');
+};
+window.__hideSyncWarning = function(){
+  const el = document.getElementById('syncWarning');
+  if(el) el.classList.remove('show');
+};
 document.addEventListener('DOMContentLoaded', ()=>{
   const navSair = document.getElementById('navSair');
   if(navSair) navSair.onclick = ()=>{ if(window.__fbSignOut) window.__fbSignOut(); };
@@ -3398,7 +3409,11 @@ window.__cloudSave = (uid, data) => {
   filaSalvamento = filaSalvamento.then(async () => {
     try {
       await setDoc(doc(dbFire, 'usuarios', uid), { payload, atualizadoEm });
-    } catch(e){ console.error('Erro ao salvar na nuvem', e); }
+      if(window.__hideSyncWarning) window.__hideSyncWarning();
+    } catch(e){
+      console.error('Erro ao salvar na nuvem', e);
+      if(window.__showSyncWarning) window.__showSyncWarning();
+    }
   });
   return filaSalvamento;
 };
@@ -3418,7 +3433,10 @@ onAuthStateChanged(auth, async (user) => {
       if(snap.exists() && snap.data().payload){
         cloudData = JSON.parse(snap.data().payload);
       }
-    } catch(e){ console.error('Erro ao carregar dados da nuvem', e); }
+    } catch(e){
+      console.error('Erro ao carregar dados da nuvem', e);
+      if(window.__showSyncWarning) window.__showSyncWarning();
+    }
     window.__fitproReady(cloudData, user.uid, user.email);
   } else {
     uidCarregado = null;
