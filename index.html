@@ -1697,7 +1697,7 @@ function renderStudentDetail(id){
       <button class="secondary" id="btnPagamento">💳 Pagamento</button>
       ${s.whatsapp?`<button class="ghost" onclick="window.open('${whatsappLink(s.whatsapp)}','_blank')">💬 Chamar no WhatsApp</button>`:''}
       <button class="ghost" onclick="window.print()">Imprimir / Exportar PDF</button>
-      <button class="ghost small" id="btnFichasArquivadas">📦 Fichas arquivadas (${fichasArquivadasList.length})</button>
+      <button class="ghost" id="btnFichasArquivadas">Fichas arquivadas (${fichasArquivadasList.length})</button>
       <button class="danger" id="btnDelStudent">Excluir aluno</button>
     </div>
 
