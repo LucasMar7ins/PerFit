@@ -2606,23 +2606,11 @@ function openAvaliacaoModal(av){
       ⚠️ O % de gordura é uma <strong>estimativa</strong> pelo método US Navy (fita métrica), com margem de erro de aproximadamente 3-4% em relação a exames de laboratório (DEXA), e tende a errar mais em pessoas muito magras ou muito musculosas. Se você tiver adipômetro, bioimpedância ou outro equipamento próprio, digite o valor real por cima — o campo é totalmente editável e seu valor não será sobrescrito sozinho.
     </div>
     <div class="meta" id="avGorduraHint" style="margin-top:-4px;margin-bottom:10px;"></div>
-    <div class="field" style="margin-top:6px;"><label>Fotos de progresso</label>
-      ${(editing && av.fotos && (av.fotos.frente||av.fotos.lado||av.fotos.costas)) ? `
-        <div class="photoUploadRow">
-          ${['frente','lado','costas'].map(k=> av.fotos[k] ? `<img src="${av.fotos[k]}" data-view-photo="${escapeAttr(av.fotos[k])}" class="photoThumb" title="${k}">` : '').join('')}
-        </div>
-      ` : ''}
-      <div class="meta" style="margin-top:6px;">Envio de novas fotos temporariamente desativado nesta fase inicial — deve voltar em uma atualização futura.</div>
-    </div>
     <div class="actions">
       <button class="secondary" onclick="closeModal()">Cancelar</button>
       <button id="avSave">Salvar avaliação</button>
     </div>
   `);
-
-  document.querySelectorAll('#modalBody [data-view-photo]').forEach(el=>{
-    el.onclick = ()=> openPhotoViewer(el.dataset.viewPhoto);
-  });
 
   let manualOverride = false;
   function recalcularGordura(force){
@@ -2950,10 +2938,6 @@ function openRegistroPagamentoModal(s, registro, onDone){
           ${METODOS_PAGAMENTO.map(m=>`<option value="${escapeAttr(m)}" ${metodoPadrao===m?'selected':''}>${escapeHtml(m)}</option>`).join('')}
         </select>
       </div>
-    </div>
-    <div class="field"><label>Nota fiscal / recibo</label>
-      ${editing && registro.notaFiscal ? `<div class="meta">📎 <a href="${registro.notaFiscal.dataUrl}" target="_blank" rel="noopener">${escapeHtml(registro.notaFiscal.name)}</a></div>` : ''}
-      <div class="meta" style="margin-top:4px;">Anexar novo arquivo temporariamente desativado nesta fase inicial — deve voltar em uma atualização futura.</div>
     </div>
     <div class="field"><label>Observações</label><textarea id="rpObs">${editing?escapeHtml(registro.obs||''):''}</textarea></div>
     <div class="actions">
