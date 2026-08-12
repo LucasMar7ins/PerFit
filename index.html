@@ -2624,6 +2624,7 @@ function openAvaliacaoModal(av){
     </div>
   `);
 
+  const uploadsFotoPendentes = {};
   ['frente','lado','costas'].forEach(k=>{
     const input = document.getElementById('avFoto_'+k);
     input.onchange = async ()=>{
@@ -2633,7 +2634,12 @@ function openAvaliacaoModal(av){
       const prev = document.getElementById('avFotoPrev_'+k);
       prev.src = dataUrl;
       prev.classList.add('show');
-      prev.dataset.value = dataUrl;
+      prev.dataset.value = dataUrl; // valor imediato, usado como respaldo se o envio à nuvem falhar
+      if(window.__uploadArquivo && currentUid){
+        uploadsFotoPendentes[k] = window.__uploadArquivo(currentUid, dataUrl, `avaliacao_${k}.jpg`)
+          .then(res=>{ prev.dataset.value = res.url; })
+          .catch(()=>{ showToast('Não foi possível enviar essa foto para a nuvem agora; ela ficará salva só neste aparelho.', 'error'); });
+      }
     };
   });
 
@@ -2695,7 +2701,11 @@ function openAvaliacaoModal(av){
   if(editing && av.percGordura){ manualOverride = true; }
   recalcularGordura(false);
 
-  document.getElementById('avSave').onclick = ()=>{
+  document.getElementById('avSave').onclick = async ()=>{
+    const btnAvSave = document.getElementById('avSave');
+    btnAvSave.disabled = true;
+    btnAvSave.textContent = 'Salvando...';
+    await Promise.all(Object.values(uploadsFotoPendentes));
     const data = document.getElementById('avData').value || today;
     const fotos = {};
     ['frente','lado','costas'].forEach(k=>{
@@ -2979,6 +2989,7 @@ function openRegistroPagamentoModal(s, registro, onDone){
   `);
 
   let arquivoData = (editing && registro.notaFiscal) ? registro.notaFiscal : null;
+  let uploadNotaFiscalPendente = null;
 
   document.getElementById('rpArquivo').onchange = async ()=>{
     const input = document.getElementById('rpArquivo');
@@ -3003,6 +3014,11 @@ function openRegistroPagamentoModal(s, registro, onDone){
       }
       arquivoData = { name: file.name, dataUrl };
       document.getElementById('rpArquivoNome').textContent = '📎 ' + arquivoData.name;
+      if(window.__uploadArquivo && currentUid){
+        uploadNotaFiscalPendente = window.__uploadArquivo(currentUid, dataUrl, file.name)
+          .then(res=>{ arquivoData = { name: file.name, dataUrl: res.url }; })
+          .catch(()=>{ showToast('Não foi possível enviar esse arquivo para a nuvem agora; ele ficará salvo só neste aparelho.', 'error'); });
+      }
     }catch(e){
       showToast('Não foi possível anexar esse arquivo.', 'error');
     }
@@ -3010,9 +3026,13 @@ function openRegistroPagamentoModal(s, registro, onDone){
 
   document.getElementById('rpCancelar').onclick = ()=> onDone();
 
-  document.getElementById('rpSave').onclick = ()=>{
+  document.getElementById('rpSave').onclick = async ()=>{
+    const btnRpSave = document.getElementById('rpSave');
+    btnRpSave.disabled = true;
+    btnRpSave.textContent = 'Salvando...';
+    if(uploadNotaFiscalPendente) await uploadNotaFiscalPendente;
     const mes = document.getElementById('rpMes').value;
-    if(!mes){ showToast('Selecione o mês de referência.', 'error'); return; }
+    if(!mes){ showToast('Selecione o mês de referência.', 'error'); btnRpSave.disabled = false; btnRpSave.textContent = 'Salvar'; return; }
     const status = document.getElementById('rpStatus').value;
     const dataPagamento = document.getElementById('rpData').value;
     const valor = document.getElementById('rpValor').value.trim();
@@ -3023,7 +3043,7 @@ function openRegistroPagamentoModal(s, registro, onDone){
       registro.valor = valor; registro.metodo = metodo; registro.obs = obs; registro.notaFiscal = arquivoData;
     } else {
       const duplicado = s.pagamentos.find(r=>r.mes===mes);
-      if(duplicado){ showToast('Já existe um registro para esse mês. Edite o registro existente.', 'error'); return; }
+      if(duplicado){ showToast('Já existe um registro para esse mês. Edite o registro existente.', 'error'); btnRpSave.disabled = false; btnRpSave.textContent = 'Salvar'; return; }
       s.pagamentos.push({ id: uid(), mes, status, dataPagamento, valor, metodo, obs, notaFiscal: arquivoData });
     }
     saveDB();
@@ -3381,6 +3401,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import { getStorage, ref, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCxC6Z4QSz3Za3wACBMlXUw_joYoYyAzAw",
@@ -3394,11 +3415,22 @@ const firebaseConfig = {
 const fbApp = initializeApp(firebaseConfig);
 const auth = getAuth(fbApp);
 const dbFire = getFirestore(fbApp);
+const storage = getStorage(fbApp);
 
 window.__fbSignIn = (email, senha) => signInWithEmailAndPassword(auth, email, senha);
 window.__fbSignUp = (email, senha) => createUserWithEmailAndPassword(auth, email, senha);
 window.__fbSignOut = () => signOut(auth);
 window.__fbResetPassword = (email) => sendPasswordResetEmail(auth, email);
+
+// Envia uma foto/arquivo (em data URL) para o Firebase Storage e devolve a URL pública dele,
+// pra não precisar guardar o arquivo inteiro dentro do documento do Firestore (que tem limite de 1MB).
+window.__uploadArquivo = async (uid, dataUrl, nomeArquivo) => {
+  const caminho = `usuarios/${uid}/arquivos/${Date.now()}_${Math.random().toString(36).slice(2,8)}_${(nomeArquivo||'arquivo').replace(/[^a-zA-Z0-9._-]/g,'_')}`;
+  const storageRef = ref(storage, caminho);
+  await uploadString(storageRef, dataUrl, 'data_url');
+  const url = await getDownloadURL(storageRef);
+  return { url, path: caminho };
+};
 
 // Fila de salvamentos: garante que cada salvamento na nuvem só comece depois do anterior terminar,
 // evitando que escritas concorrentes cheguem ao Firestore fora de ordem.
