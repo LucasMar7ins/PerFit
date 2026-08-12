@@ -3389,14 +3389,29 @@ window.__fbSignUp = (email, senha) => createUserWithEmailAndPassword(auth, email
 window.__fbSignOut = () => signOut(auth);
 window.__fbResetPassword = (email) => sendPasswordResetEmail(auth, email);
 
-window.__cloudSave = async (uid, data) => {
-  try {
-    await setDoc(doc(dbFire, 'usuarios', uid), { payload: JSON.stringify(data), atualizadoEm: new Date().toISOString() });
-  } catch(e){ console.error('Erro ao salvar na nuvem', e); }
+// Fila de salvamentos: garante que cada salvamento na nuvem só comece depois do anterior terminar,
+// evitando que escritas concorrentes cheguem ao Firestore fora de ordem.
+let filaSalvamento = Promise.resolve();
+window.__cloudSave = (uid, data) => {
+  const payload = JSON.stringify(data);
+  const atualizadoEm = new Date().toISOString();
+  filaSalvamento = filaSalvamento.then(async () => {
+    try {
+      await setDoc(doc(dbFire, 'usuarios', uid), { payload, atualizadoEm });
+    } catch(e){ console.error('Erro ao salvar na nuvem', e); }
+  });
+  return filaSalvamento;
 };
 
+// Controla para qual uid os dados já foram carregados nesta sessão do app.
+// O Firebase dispara onAuthStateChanged de novo sozinho em situações normais (renovação de token,
+// reconexão de rede etc.) — sem essa trava, cada disparo buscaria a nuvem de novo e substituiria
+// os dados em tela por uma versão possivelmente desatualizada (ex.: de antes de um salvamento terminar).
+let uidCarregado = null;
 onAuthStateChanged(auth, async (user) => {
   if(user){
+    if(user.uid === uidCarregado) return; // mesmo usuário já carregado — evento repetido, ignorar
+    uidCarregado = user.uid;
     let cloudData = null;
     try {
       const snap = await getDoc(doc(dbFire, 'usuarios', user.uid));
@@ -3406,6 +3421,7 @@ onAuthStateChanged(auth, async (user) => {
     } catch(e){ console.error('Erro ao carregar dados da nuvem', e); }
     window.__fitproReady(cloudData, user.uid, user.email);
   } else {
+    uidCarregado = null;
     window.__showLogin();
   }
 });
