@@ -434,7 +434,7 @@ function uid(){ return Math.random().toString(36).slice(2,10); }
 
 let db = loadDB();
 let currentUid = null;
-let state = { tab:'alunos', studentId:null, chartMetric:'peso', studentFilter:'ativos', collapsedSections: { anamnese:true, evolucao:true, avaliacoes:true, fichas:false, cargas:false }, agendaView:null, agendaRef:null, printRecibo:null, treinoAoVivo:null, exerciseCollapsedGroups:{} };
+let state = { tab:'alunos', studentId:null, chartMetric:'peso', studentFilter:'ativos', collapsedSections: { anamnese:true, evolucao:true, avaliacoes:true, fichas:false, cargas:false }, agendaView:null, agendaRef:null, printRecibo:null, printAvaliacao:null, treinoAoVivo:null, exerciseCollapsedGroups:{} };
 
 // ---------- REAVALIAÇÃO (lembrete) ----------
 const REAVAL_DIAS_LIMITE = 45; // ~6-7 semanas sem atualizar medidas
@@ -596,6 +596,7 @@ document.querySelectorAll('nav .tab[data-tab]').forEach(t=>{
     state.studentId = null;
     state.printFicha = null;
     state.printRecibo = null;
+    state.printAvaliacao = null;
     state.treinoAoVivo = null;
     render();
   });
@@ -609,6 +610,8 @@ function render(){
     main.innerHTML = renderFichaPrint(state.printFicha.studentId, state.printFicha.fichaId);
   } else if(state.printRecibo){
     main.innerHTML = renderReciboPrint(state.printRecibo.studentId, state.printRecibo.registroId);
+  } else if(state.printAvaliacao){
+    main.innerHTML = renderAvaliacaoPrint(state.printAvaliacao.studentId, state.printAvaliacao.avaliacaoId);
   } else if(state.treinoAoVivo){
     main.innerHTML = renderTreinoAoVivo(state.treinoAoVivo.studentId, state.treinoAoVivo.fichaId);
   } else if(state.tab === 'alunos'){
@@ -680,6 +683,60 @@ function renderReciboPrint(studentId, registroId){
       </table>
       <div class="meta" style="margin-top:20px;">Recibo referente à prestação de serviços de personal trainer.</div>
       <div class="meta" style="margin-top:6px;">Emitido em ${formatDate(hoje)} • FitPro Manager</div>
+    </div>
+  `;
+}
+
+function renderAvaliacaoPrint(studentId, avaliacaoId){
+  const s = db.students.find(x=>x.id===studentId);
+  const av = s && (s.avaliacoes||[]).find(x=>x.id===avaliacaoId);
+  if(!s || !av){
+    return `<span class="backBtn noprint" id="backFromAvaliacao">&larr; Voltar</span><div class="empty">Avaliação não encontrada.</div>`;
+  }
+  const hoje = new Date().toISOString();
+  const stat = (label,val,unit)=> val ? `<tr><td style="color:var(--muted);width:170px;">${label}</td><td style="font-weight:600;">${escapeHtml(String(val))}${unit?(' '+unit):''}</td></tr>` : '';
+  const temDobras = ['dobraTricipital','dobraBicipital','dobraAbdominal','dobraSubescapular','dobraCoxa','dobraToracica','dobraSuprailiaca','dobraSupraespinhal'].some(k=>av[k]);
+  return `
+    <span class="backBtn noprint" id="backFromAvaliacao">&larr; Voltar para o aluno</span>
+    <div class="row noprint" style="margin-bottom:16px;">
+      <button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
+    </div>
+    <div class="card" style="max-width:560px;">
+      <h2 style="margin-bottom:2px;">${escapeHtml(s.nome)}</h2>
+      <div class="sub">Avaliação Física • ${formatDate(av.data)}${s.objetivo?(' • '+escapeHtml(s.objetivo)):''}${s.nivel?(' • '+escapeHtml(s.nivel)):''}</div>
+      <table>
+        <tbody>
+          ${stat('Idade',av.idade,'anos')}
+          ${stat('Peso',av.peso,'kg')}
+          ${stat('Altura',av.altura,'cm')}
+          ${stat('% Gordura',av.percGordura,'%')}
+          ${stat('Pescoço',av.circPescoco,'cm')}
+          ${stat('Tórax',av.circPeito,'cm')}
+          ${stat('Cintura',av.circCintura,'cm')}
+          ${stat('Quadril',av.circQuadril,'cm')}
+          ${stat('Abdômen',av.circAbdomen,'cm')}
+          ${stat('Braço',av.circBraco,'cm')}
+          ${stat('Coxa',av.circCoxa,'cm')}
+          ${stat('Panturrilha',av.circPanturrilha,'cm')}
+        </tbody>
+      </table>
+      ${temDobras ? `
+      <div class="meta" style="margin-top:14px;margin-bottom:4px;">Dobras cutâneas</div>
+      <table>
+        <tbody>
+          ${stat('Tricipital',av.dobraTricipital,'mm')}
+          ${stat('Bicipital',av.dobraBicipital,'mm')}
+          ${stat('Abdominal',av.dobraAbdominal,'mm')}
+          ${stat('Subescapular',av.dobraSubescapular,'mm')}
+          ${stat('Coxa',av.dobraCoxa,'mm')}
+          ${stat('Torácica',av.dobraToracica,'mm')}
+          ${stat('Suprailíaca',av.dobraSuprailiaca,'mm')}
+          ${stat('Supraespinhal',av.dobraSupraespinhal,'mm')}
+        </tbody>
+      </table>
+      ` : ''}
+      <div class="meta" style="margin-top:20px;">Avaliação física registrada por FitPro Manager.</div>
+      <div class="meta" style="margin-top:6px;">Gerado em ${formatDate(hoje)} • FitPro Manager</div>
     </div>
   `;
 }
@@ -1517,6 +1574,7 @@ function renderStudentDetail(id){
           ` : ''}
         </div>
         <div class="row noprint" style="flex-direction:column;align-items:stretch;gap:6px;">
+          <button class="ghost small" data-print-aval="${av.id}">🖨️ Imprimir</button>
           <button class="secondary small" data-edit-aval="${av.id}">Editar</button>
           <button class="danger small" data-del-aval="${av.id}">Excluir</button>
         </div>
@@ -2061,6 +2119,12 @@ function bindEvents(){
       openAvaliacaoModal(av);
     };
   });
+  document.querySelectorAll('[data-print-aval]').forEach(el=>{
+    el.onclick = ()=>{
+      state.printAvaliacao = { studentId: state.studentId, avaliacaoId: el.dataset.printAval };
+      render();
+    };
+  });
   document.querySelectorAll('[data-del-aval]').forEach(el=>{
     el.onclick = ()=>{
       showConfirm('Excluir esta avaliação?', ()=>{
@@ -2238,6 +2302,8 @@ function bindEvents(){
     if(tabEl) tabEl.classList.add('active');
     render();
   };
+  const backFromAvaliacao = document.getElementById('backFromAvaliacao');
+  if(backFromAvaliacao) backFromAvaliacao.onclick = ()=>{ state.printAvaliacao = null; render(); };
   document.querySelectorAll('[data-del-ficha]').forEach(el=>{
     el.onclick = ()=>{
       showConfirm('Excluir esta ficha?', ()=>{
