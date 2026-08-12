@@ -59,6 +59,23 @@
   .weekFichaCol{text-align:center;}
   .weekFichaCol select{width:100%;text-align:center;}
   @media (max-width:760px){ .weekFichaGrid{overflow-x:auto;min-width:0;grid-auto-flow:column;grid-auto-columns:minmax(64px,1fr);} }
+  .planSemana{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;}
+  .planSemanaAtual{border-color:var(--accent);}
+  .planSemanaLabel{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px;}
+  .planSemanaAtual .planSemanaLabel{color:var(--accent);}
+  .planSemanaDias{display:grid;grid-template-columns:repeat(7,minmax(84px,1fr));gap:8px;align-items:start;}
+  @media (max-width:760px){ .planSemanaDias{overflow-x:auto;min-width:0;grid-auto-flow:column;grid-auto-columns:minmax(96px,1fr);} }
+  .planDia{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px;cursor:pointer;}
+  .planDiaExpandido{cursor:default;}
+  .planDiaData{font-size:11px;color:var(--muted);text-align:center;margin-bottom:2px;}
+  .planDiaFicha{font-size:12px;font-weight:600;color:var(--text);text-align:center;cursor:pointer;}
+  .planDiaSeta{color:var(--muted);font-size:10px;}
+  .planDiaSelect{width:100%;margin-top:8px;font-size:12px;}
+  .planDiaExercicios{border-top:1px solid var(--line);margin-top:8px;padding-top:6px;display:flex;flex-direction:column;gap:5px;}
+  .planDiaEx{font-size:11px;color:var(--text);line-height:1.3;}
+  .planDiaEx span{display:block;color:var(--muted);}
+  .planDiaExMais{font-size:11px;color:var(--muted);}
+  .planDiaVerFicha{font-size:11px;color:var(--accent);cursor:pointer;display:inline-block;}
   .calCell{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px;min-height:100px;display:flex;flex-direction:column;}
   .calCellVazia{background:transparent;border:none;}
   .calCellHoje{border-color:var(--accent);}
@@ -434,7 +451,7 @@ function uid(){ return Math.random().toString(36).slice(2,10); }
 
 let db = loadDB();
 let currentUid = null;
-let state = { tab:'alunos', studentId:null, chartMetric:'peso', studentFilter:'ativos', collapsedSections: { anamnese:true, evolucao:true, avaliacoes:true, fichas:false, cargas:false }, agendaView:null, agendaRef:null, printRecibo:null, printAvaliacao:null, treinoAoVivo:null, exerciseCollapsedGroups:{} };
+let state = { tab:'alunos', studentId:null, chartMetric:'peso', studentFilter:'ativos', collapsedSections: { anamnese:true, evolucao:true, avaliacoes:true, fichas:false, cargas:false }, agendaView:null, agendaRef:null, printRecibo:null, printAvaliacao:null, treinoAoVivo:null, exerciseCollapsedGroups:{}, planejamentoSemanasQtd:3, planejamentoExpandido:null };
 
 // ---------- REAVALIAÇÃO (lembrete) ----------
 const REAVAL_DIAS_LIMITE = 45; // ~6-7 semanas sem atualizar medidas
@@ -832,7 +849,7 @@ function renderStudentCards(){
 }
 function bindStudentCardEvents(){
   document.querySelectorAll('[data-open-student]').forEach(el=>{
-    el.onclick = ()=>{ state.studentId = el.dataset.openStudent; render(); };
+    el.onclick = ()=>{ state.studentId = el.dataset.openStudent; state.planejamentoExpandido = null; render(); };
   });
 }
 function renderStudentsList(){
@@ -936,6 +953,27 @@ function isoFromDateObj(d){
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 function isoHoje(){ return isoFromDateObj(new Date()); }
+function addDiasISO(iso, n){
+  const d = new Date(iso+'T00:00:00');
+  d.setDate(d.getDate()+n);
+  return isoFromDateObj(d);
+}
+function segundaFeiraDaSemana(iso){
+  const d = new Date(iso+'T00:00:00');
+  const dow = d.getDay();
+  const diff = dow===0 ? -6 : (1-dow);
+  d.setDate(d.getDate()+diff);
+  return isoFromDateObj(d);
+}
+function divisaoParaSemana(s, segundaISO){
+  s.planejamentoSemanas = s.planejamentoSemanas || {};
+  return s.planejamentoSemanas[segundaISO] || s.divisaoSemanal || {};
+}
+function fichaIdParaData(s, dataISO){
+  const seg = segundaFeiraDaSemana(dataISO);
+  const diaKey = diaSemanaFromISODate(dataISO);
+  return divisaoParaSemana(s, seg)[diaKey] || '';
+}
 
 // ---------- PRESENÇA (compareceu / faltou / reposição) ----------
 function getPresenca(s, slotId, dataISO){
@@ -1036,8 +1074,7 @@ function slotChipHtml(a, dataISO){
   const quandoTexto = dataISO===isoHoje() ? 'hoje' : `no dia ${formatDate(dataISO)}`;
   const mensagemLembrete = `Oi ${a.aluno.nome}! Só lembrando que você tem treino marcado ${quandoTexto} às ${a.horario||''}. Te espero! 💪`;
   const linkLembrete = a.aluno.whatsapp ? whatsappLink(a.aluno.whatsapp, mensagemLembrete) : null;
-  const diaKeyOcorrencia = diaSemanaFromISODate(dataISO);
-  const fichaIdDoDia = (a.aluno.divisaoSemanal||{})[diaKeyOcorrencia];
+  const fichaIdDoDia = fichaIdParaData(a.aluno, dataISO);
   const fichaDoDia = fichaIdDoDia ? (a.aluno.fichas||[]).find(f=>f.id===fichaIdDoDia) : null;
   return `
     <div class="agendaSlot${statusClass}" data-agenda-ocorrencia="${a.aluno.id}|${a.id}|${dataISO}" title="Clique para marcar presença ou editar">
@@ -1493,6 +1530,63 @@ function buildEvolutionChart(avaliacoesAsc, metricKey, unit){
   `;
 }
 
+function buildPlanejamentoHtml(s){
+  const fichasAtivas = s.fichas.filter(f=>f.ativa);
+  if(fichasAtivas.length===0) return '';
+  s.planejamentoSemanas = s.planejamentoSemanas || {};
+  const segundaAtual = segundaFeiraDaSemana(isoHoje());
+  const qtdSemanas = state.planejamentoSemanasQtd || 3;
+  let semanasHtml = '';
+  for(let i=0;i<qtdSemanas;i++){
+    const segISO = addDiasISO(segundaAtual, i*7);
+    const domISO = addDiasISO(segISO, 6);
+    const isAtual = i===0;
+    const divisao = divisaoParaSemana(s, segISO);
+    let diasHtml = '';
+    DIAS_SEMANA_ORDEM.forEach((diaKey,idx)=>{
+      const dataISO = addDiasISO(segISO, idx);
+      const fichaId = divisao[diaKey] || '';
+      const ficha = fichaId ? fichasAtivas.find(f=>f.id===fichaId) : null;
+      const chave = `${segISO}|${diaKey}`;
+      const expandido = state.planejamentoExpandido === chave;
+      const dObj = new Date(dataISO+'T00:00:00');
+      const dataCurta = `${String(dObj.getDate()).padStart(2,'0')}/${String(dObj.getMonth()+1).padStart(2,'0')}`;
+      diasHtml += `
+        <div class="planDia ${expandido?'planDiaExpandido':''}">
+          <div class="planDiaData">${DIAS_SEMANA_CURTO[idx]} · ${dataCurta}</div>
+          <div class="planDiaFicha" data-plan-toggle="${chave}">${ficha ? ('Ficha '+escapeHtml(ficha.letra)) : 'Descanso'} <span class="planDiaSeta">${expandido?'▲':'▼'}</span></div>
+          ${expandido ? `
+            <select class="planDiaSelect" data-plan-select="${chave}">
+              <option value="">Descanso</option>
+              ${fichasAtivas.map(f=>`<option value="${f.id}" ${fichaId===f.id?'selected':''}>Ficha ${escapeHtml(f.letra)}</option>`).join('')}
+            </select>
+            ${ficha ? `
+              <div class="planDiaExercicios">
+                ${ficha.exercicios.slice(0,4).map(e=>`<div class="planDiaEx">${escapeHtml(e.nome)}<span>${escapeHtml(e.series||'-')}x${escapeHtml(e.reps||'-')}${e.obs?(' · '+escapeHtml(e.obs)):''}</span></div>`).join('')}
+                ${ficha.exercicios.length>4 ? `<div class="planDiaExMais">+${ficha.exercicios.length-4} exercício(s)</div>` : ''}
+                <span class="planDiaVerFicha" data-plan-abrir-ficha="${ficha.id}">Ver ficha completa →</span>
+              </div>
+            ` : ''}
+          ` : ''}
+        </div>`;
+    });
+    semanasHtml += `
+      <div class="planSemana ${isAtual?'planSemanaAtual':''}">
+        <div class="planSemanaLabel">${formatDate(segISO)} a ${formatDate(domISO)}${isAtual?' · atual':''}</div>
+        <div class="planSemanaDias">${diasHtml}</div>
+      </div>`;
+  }
+  return `
+    <div class="card noprint" style="margin-bottom:18px;">
+      <div class="row" style="justify-content:space-between;margin-bottom:10px;">
+        <strong style="font-size:13px;">📅 Planejamento semanal</strong>
+        <button class="ghost small" id="btnAddSemanaPlanejamento">+ Adicionar semana</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;">${semanasHtml}</div>
+    </div>
+  `;
+}
+
 function renderStudentDetail(id){
   const s = db.students.find(x=>x.id===id);
   if(!s){ state.studentId=null; return renderStudentsList(); }
@@ -1627,8 +1721,7 @@ function renderStudentDetail(id){
     `;
   }).join('');
 
-  const diaKeyHoje = diaSemanaFromISODate(isoHoje());
-  const fichaIdHoje = s.divisaoSemanal[diaKeyHoje] || '';
+  const fichaIdHoje = fichaIdParaData(s, isoHoje());
   const fichas = s.fichas.slice().sort((a,b)=> (b.criadoEm||'').localeCompare(a.criadoEm||''));
   const fichasVisiveis = fichas.filter(f=>f.ativa);
   const fichasArquivadasList = fichas.filter(f=>!f.ativa);
@@ -1702,25 +1795,7 @@ function renderStudentDetail(id){
       <button class="danger" id="btnDelStudent">Excluir aluno</button>
     </div>
 
-    ${(()=>{
-      const fichasAtivas = s.fichas.filter(f=>f.ativa);
-      if(fichasAtivas.length===0) return '';
-      return `
-    <div class="card weekFichaGrid noprint" style="margin-bottom:18px;">
-      ${DIAS_SEMANA_ORDEM.map((diaKey,i)=>{
-        const fichaId = s.divisaoSemanal[diaKey] || '';
-        return `
-        <div class="weekFichaCol">
-          <div class="calCabecalho">${DIAS_SEMANA_CURTO[i]}</div>
-          <select data-divisao-dia="${diaKey}" title="${fichaId ? escapeAttr((fichasAtivas.find(f=>f.id===fichaId)||{}).nome||'') : 'Descanso'}">
-            <option value="">Descanso</option>
-            ${fichasAtivas.map(f=>`<option value="${f.id}" ${fichaId===f.id?'selected':''} title="${escapeAttr(f.nome||('Treino '+f.letra))}">Ficha ${escapeHtml(f.letra)}</option>`).join('')}
-          </select>
-        </div>`;
-      }).join('')}
-    </div>
-      `;
-    })()}
+    ${buildPlanejamentoHtml(s)}
 
     <div class="sectionTitle">
       <span class="collapseToggle" data-toggle-section="anamnese"><span class="collapseArrow">${state.collapsedSections.anamnese?'▶':'▼'}</span> 🩺 Anamnese completa</span>
@@ -2105,14 +2180,36 @@ function bindEvents(){
     };
   });
 
-  document.querySelectorAll('[data-divisao-dia]').forEach(el=>{
+  const btnAddSemanaPlanejamento = document.getElementById('btnAddSemanaPlanejamento');
+  if(btnAddSemanaPlanejamento) btnAddSemanaPlanejamento.onclick = ()=>{
+    state.planejamentoSemanasQtd = (state.planejamentoSemanasQtd||3) + 1;
+    render();
+  };
+  document.querySelectorAll('[data-plan-toggle]').forEach(el=>{
+    el.onclick = ()=>{
+      const chave = el.dataset.planToggle;
+      state.planejamentoExpandido = (state.planejamentoExpandido===chave) ? null : chave;
+      render();
+    };
+  });
+  document.querySelectorAll('[data-plan-select]').forEach(el=>{
     el.onchange = ()=>{
       const s = db.students.find(x=>x.id===state.studentId);
       if(!s) return;
-      s.divisaoSemanal = s.divisaoSemanal || {};
-      s.divisaoSemanal[el.dataset.divisaoDia] = el.value;
+      const [segISO, diaKey] = el.dataset.planSelect.split('|');
+      s.planejamentoSemanas = s.planejamentoSemanas || {};
+      s.planejamentoSemanas[segISO] = s.planejamentoSemanas[segISO] || {};
+      s.planejamentoSemanas[segISO][diaKey] = el.value;
       saveDB();
       render();
+    };
+  });
+  document.querySelectorAll('[data-plan-abrir-ficha]').forEach(el=>{
+    el.onclick = (ev)=>{
+      ev.stopPropagation();
+      const s = db.students.find(x=>x.id===state.studentId);
+      const f = s && s.fichas.find(x=>x.id===el.dataset.planAbrirFicha);
+      if(f) openFichaModal(f);
     };
   });
 
