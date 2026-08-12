@@ -3212,7 +3212,7 @@ function traduzErroFirebase(err){
   const code = (err && err.code) || '';
   const map = {
     'auth/invalid-email':'E-mail inválido.',
-    'auth/user-not-found':'Não existe conta com esse e-mail. Clique em "Criar conta".',
+    'auth/user-not-found':'Não existe conta com esse e-mail. Fale com quem administra o FitPro para receber acesso.',
     'auth/wrong-password':'Senha incorreta.',
     'auth/invalid-credential':'E-mail ou senha incorretos.',
     'auth/email-already-in-use':'Já existe uma conta com esse e-mail. Clique em "Entrar".',
@@ -3242,8 +3242,7 @@ function renderLoginScreen(mensagem, emailPreenchido, tipoMensagem){
             <button type="button" id="toggleSenhaVisivel" title="Mostrar/ocultar senha" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--muted);cursor:pointer;padding:4px 6px;font-size:15px;line-height:1;">👁️</button>
           </div>
         </div>
-        <div class="actions" style="justify-content:space-between;">
-          <button class="secondary" id="btnCriarConta">Criar conta</button>
+        <div class="actions" style="justify-content:flex-end;">
           <button id="btnEntrar">Entrar</button>
         </div>
         <div style="text-align:center;margin-top:14px;">
@@ -3267,12 +3266,6 @@ function renderLoginScreen(mensagem, emailPreenchido, tipoMensagem){
     const {email, senha} = lerCampos();
     if(!email || !senha){ renderLoginScreen('Preencha e-mail e senha.', email); return; }
     window.__fbSignIn(email, senha).catch(err=> renderLoginScreen(traduzErroFirebase(err), email));
-  };
-  document.getElementById('btnCriarConta').onclick = ()=>{
-    const {email, senha} = lerCampos();
-    if(!email || !senha){ renderLoginScreen('Preencha e-mail e senha.', email); return; }
-    if(senha.length<6){ renderLoginScreen('A senha precisa ter pelo menos 6 caracteres.', email); return; }
-    window.__fbSignUp(email, senha).catch(err=> renderLoginScreen(traduzErroFirebase(err), email));
   };
   document.getElementById('linkEsqueciSenha').onclick = (e)=>{
     e.preventDefault();
@@ -3323,7 +3316,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -3340,7 +3333,6 @@ const auth = getAuth(fbApp);
 const dbFire = getFirestore(fbApp);
 
 window.__fbSignIn = (email, senha) => signInWithEmailAndPassword(auth, email, senha);
-window.__fbSignUp = (email, senha) => createUserWithEmailAndPassword(auth, email, senha);
 window.__fbSignOut = () => signOut(auth);
 window.__fbResetPassword = (email) => sendPasswordResetEmail(auth, email);
 
