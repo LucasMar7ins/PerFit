@@ -644,9 +644,9 @@ function renderFichaPrint(studentId, fichaId){
       <h2 style="margin-bottom:2px;">${escapeHtml(s.nome)}</h2>
       <div class="sub">${escapeHtml(f.nome || ('Treino '+f.letra))} • Treino ${escapeHtml(f.letra)}${s.objetivo?(' • '+escapeHtml(s.objetivo)):''}${s.nivel?(' • '+escapeHtml(s.nivel)):''}</div>
       <table>
-        <thead><tr><th style="width:30px;"></th><th>Exercício</th><th>Grupo</th><th>Séries</th><th>Reps</th><th>Carga</th><th>Descanso</th><th>Volume</th></tr></thead>
+        <thead><tr><th style="width:30px;"></th><th>Exercício</th><th>Grupo</th><th>Séries</th><th>Reps</th><th>Carga</th><th>Descanso</th><th>Método</th><th>Volume</th></tr></thead>
         <tbody>
-          ${f.exercicios.map(e=>`<tr><td>☐</td><td>${escapeHtml(e.nome)}</td><td>${escapeHtml(e.grupo||'-')}</td><td>${escapeHtml(e.series||'-')}</td><td>${escapeHtml(e.reps||'-')}</td><td>${escapeHtml(e.obs||'-')}</td><td>${escapeHtml(e.descanso||'-')}</td><td>${formatVolume(calcularVolumeExercicio(e))}</td></tr>`).join('')}
+          ${f.exercicios.map(e=>`<tr><td>☐</td><td>${escapeHtml(e.nome)}</td><td>${escapeHtml(e.grupo||'-')}</td><td>${escapeHtml(e.series||'-')}</td><td>${escapeHtml(e.reps||'-')}</td><td>${escapeHtml(e.obs||'-')}</td><td>${escapeHtml(e.descanso||'-')}</td><td>${escapeHtml(e.metodo||'-')}</td><td>${formatVolume(calcularVolumeExercicio(e))}</td></tr>`).join('')}
         </tbody>
       </table>
       <div class="meta" style="margin-top:10px;font-weight:600;">🏋️ Volume total do treino: ${formatVolume(volumeTotalFicha(f))}kg</div>
@@ -1663,7 +1663,7 @@ function renderStudentDetail(id){
         </div>
       </div>
       <table>
-        <thead><tr><th class="noprint">Feito</th><th>Exercício</th><th>Grupo</th><th>Séries</th><th>Reps</th><th>Carga</th><th>Descanso</th><th title="Séries x Reps x Carga">Volume</th><th>Anotações</th></tr></thead>
+        <thead><tr><th class="noprint">Feito</th><th>Exercício</th><th>Grupo</th><th>Séries</th><th>Reps</th><th>Carga</th><th>Descanso</th><th>Método</th><th title="Séries x Reps x Carga">Volume</th><th>Anotações</th></tr></thead>
         <tbody>
           ${f.exercicios.map(e=>`<tr>
             <td class="noprint"><input type="checkbox" data-toggle-exec="${f.id}|${e.id}" ${e.feito?'checked':''} style="width:18px;height:18px;cursor:pointer;"></td>
@@ -1673,6 +1673,7 @@ function renderStudentDetail(id){
             <td><input class="inlineEdit noprint-border" data-field-exec="${f.id}|${e.id}|reps" value="${escapeAttr(e.reps||'')}" placeholder="-"></td>
             <td><input class="inlineEdit noprint-border" data-field-exec="${f.id}|${e.id}|obs" value="${escapeAttr(e.obs||'')}" placeholder="-"></td>
             <td><input class="inlineEdit noprint-border" data-field-exec="${f.id}|${e.id}|descanso" value="${escapeAttr(e.descanso||'')}" placeholder="Ex: 60s"></td>
+            <td><input class="inlineEdit noprint-border" data-field-exec="${f.id}|${e.id}|metodo" value="${escapeAttr(e.metodo||'')}" placeholder="Ex: Bi-set"></td>
             <td id="vol-${f.id}-${e.id}" style="color:var(--muted);">${formatVolume(calcularVolumeExercicio(e))}</td>
             <td>
               <button type="button" class="secondary small noprint" data-open-note="${f.id}|${e.id}" style="${e.notas?'border-color:var(--yellow);color:var(--yellow);':''}">${e.notas?'📝 Ver observação':'📝 Observação'}</button>
@@ -3165,6 +3166,7 @@ function openFichaModal(ficha){
           <div class="miniField"><label>Reps</label><input class="rReps" placeholder="Ex: 12" value="${escapeAttr(e.reps||'')}"></div>
           <div class="miniField"><label>Carga</label><input class="rObs" placeholder="Ex: 20kg" value="${escapeAttr(e.obs||'')}"></div>
           <div class="miniField"><label>Descanso</label><input class="rDescanso" placeholder="Ex: 60s" value="${escapeAttr(e.descanso||'')}"></div>
+          <div class="miniField"><label>Método</label><input class="rMetodo" placeholder="Ex: Bi-set, conjugado" value="${escapeAttr(e.metodo||'')}"></div>
           <div class="miniField"><label>Anotações</label><input class="rNotas" placeholder="dor, dificuldade..." value="${escapeAttr(e.notas||'')}"></div>
         </div>
         <input class="rGrupo" style="display:none" value="${escapeAttr(e.grupo||'')}">
@@ -3225,7 +3227,7 @@ function openFichaModal(ficha){
   bindRowRemovals();
 
   document.getElementById('fAddRow').onclick = ()=>{
-    workingList.push({nome:'',grupo:'',series:'',reps:'',obs:'',video:'',notas:'',descanso:''});
+    workingList.push({nome:'',grupo:'',series:'',reps:'',obs:'',video:'',notas:'',descanso:'',metodo:''});
     refreshRows();
   };
 
@@ -3238,7 +3240,7 @@ function openFichaModal(ficha){
       workingList.length = 0;
       template.exercicios.forEach(nome=>{
         const ex = db.exercises.find(e=>e.nome===nome);
-        workingList.push({nome, grupo: ex?ex.grupo:'', series:'', reps:'', obs:'', video: ex&&ex.video?ex.video:'', notas:'', descanso:''});
+        workingList.push({nome, grupo: ex?ex.grupo:'', series:'', reps:'', obs:'', video: ex&&ex.video?ex.video:'', notas:'', descanso:'', metodo:''});
       });
       refreshRows();
     };
@@ -3259,11 +3261,12 @@ function openFichaModal(ficha){
       workingList[i].reps = row.querySelector('.rReps').value;
       workingList[i].obs = row.querySelector('.rObs').value;
       workingList[i].descanso = row.querySelector('.rDescanso').value;
+      workingList[i].metodo = row.querySelector('.rMetodo').value;
       workingList[i].notas = row.querySelector('.rNotas').value;
     });
     const cleaned = workingList.filter(e=>e.nome).map(e=>({
       id: e.id || uid(),
-      nome: e.nome, grupo: e.grupo||'', series: e.series||'', reps: e.reps||'', obs: e.obs||'', video: e.video||'', notas: e.notas||'', descanso: e.descanso||'',
+      nome: e.nome, grupo: e.grupo||'', series: e.series||'', reps: e.reps||'', obs: e.obs||'', video: e.video||'', notas: e.notas||'', descanso: e.descanso||'', metodo: e.metodo||'',
       feito: e.feito || false
     }));
     if(cleaned.length===0){ showToast('Adicione ao menos um exercício.', 'error'); return; }
