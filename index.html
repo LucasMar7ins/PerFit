@@ -3396,11 +3396,11 @@ window.__cloudSave = (uid, data) => {
 // só é liberado pelo próprio banco de dados enquanto o teste estiver válido ou pago=true — não é
 // uma trava só de tela, é aplicada no servidor do Firestore.
 const DIAS_TESTE_GRATIS = 14;
-async function verificarLicenca(uid){
+async function verificarLicenca(uid, email){
   const licRef = doc(dbFire, 'licencas', uid);
   const snap = await getDoc(licRef);
   if(!snap.exists()){
-    await setDoc(licRef, { testeIniciadoEm: serverTimestamp(), pago: false });
+    await setDoc(licRef, { email: email || '', testeIniciadoEm: serverTimestamp(), pago: false });
     return { diasRestantes: DIAS_TESTE_GRATIS, pago: false };
   }
   const dados = snap.data();
@@ -3421,7 +3421,7 @@ onAuthStateChanged(auth, async (user) => {
     uidCarregado = user.uid;
     let licenca;
     try {
-      licenca = await verificarLicenca(user.uid);
+      licenca = await verificarLicenca(user.uid, user.email);
     } catch(e){
       console.error('Erro ao verificar licença', e);
       licenca = { diasRestantes: DIAS_TESTE_GRATIS, pago: false };
