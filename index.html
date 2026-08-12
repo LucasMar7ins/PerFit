@@ -220,6 +220,7 @@
     <div class="tab" data-tab="backup">💾 Backup</div>
     <div class="tab" id="navSair" style="margin-top:20px;border-top:1px solid var(--line);color:var(--muted);">🚪 Sair</div>
     <div id="navUsuario" style="padding:10px 20px;font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 0 auto;max-width:220px;"></div>
+    <div id="navTeste" style="padding:0 20px 10px;font-size:11px;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 0 auto;max-width:220px;"></div>
   </nav>
   <main id="main"><div style="text-align:center;margin-top:100px;color:var(--muted);">Carregando…</div></main>
 </div>
@@ -3276,7 +3277,7 @@ function renderLoginScreen(mensagem, emailPreenchido, tipoMensagem){
       .catch(err=> renderLoginScreen(traduzErroFirebase(err), email));
   };
 }
-window.__fitproReady = function(cloudData, uid, email){
+window.__fitproReady = function(cloudData, uid, email, licenca){
   window.scrollTo(0,0);
   currentUid = uid;
   if(cloudData){
@@ -3291,11 +3292,37 @@ window.__fitproReady = function(cloudData, uid, email){
   if(navEl) navEl.style.display = '';
   const navUsuario = document.getElementById('navUsuario');
   if(navUsuario) navUsuario.textContent = email || '';
+  const navTeste = document.getElementById('navTeste');
+  if(navTeste){
+    if(licenca && !licenca.pago && typeof licenca.diasRestantes === 'number'){
+      navTeste.textContent = `🎁 ${licenca.diasRestantes} dia(s) de teste grátis restante(s)`;
+    } else {
+      navTeste.textContent = '';
+    }
+  }
   render();
 };
 window.__showLogin = function(){
   currentUid = null;
   renderLoginScreen();
+};
+window.__showTesteExpirado = function(){
+  currentUid = null;
+  const navEl = document.querySelector('nav');
+  if(navEl) navEl.style.display = 'none';
+  document.getElementById('main').innerHTML = `
+    <div style="max-width:360px;margin:80px auto;text-align:center;">
+      <h2 style="margin-bottom:4px;">Fit<span style="color:var(--accent2);">Pro</span> Manager</h2>
+      <div class="card" style="text-align:left;">
+        <div class="banner" style="border-color:var(--accent);">Seu período de teste grátis terminou. Fale com quem administra o FitPro para continuar usando.</div>
+        <div class="actions" style="justify-content:flex-end;">
+          <button class="secondary" id="btnSairTeste">Sair</button>
+        </div>
+      </div>
+    </div>
+  `;
+  const btnSairTeste = document.getElementById('btnSairTeste');
+  if(btnSairTeste) btnSairTeste.onclick = ()=>{ if(window.__fbSignOut) window.__fbSignOut(); };
 };
 const MSG_SYNC_PADRAO = '⚠️ Sem conexão com a nuvem — suas alterações estão sendo salvas só neste aparelho até a internet voltar.';
 window.__showSyncWarning = function(mensagem){
@@ -3317,7 +3344,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCxC6Z4QSz3Za3wACBMlXUw_joYoYyAzAw",
@@ -3363,6 +3390,26 @@ window.__cloudSave = (uid, data) => {
   return filaSalvamento;
 };
 
+// Período de teste grátis: a data de início e o status de pagamento ficam numa coleção separada
+// (licencas/{uid}) cuja regra do Firestore só permite ao próprio professor LER, nunca escrever
+// (exceto na primeira vez, pra "ligar o cronômetro" sozinho). O acesso aos dados em usuarios/{uid}
+// só é liberado pelo próprio banco de dados enquanto o teste estiver válido ou pago=true — não é
+// uma trava só de tela, é aplicada no servidor do Firestore.
+const DIAS_TESTE_GRATIS = 14;
+async function verificarLicenca(uid){
+  const licRef = doc(dbFire, 'licencas', uid);
+  const snap = await getDoc(licRef);
+  if(!snap.exists()){
+    await setDoc(licRef, { testeIniciadoEm: serverTimestamp(), pago: false });
+    return { diasRestantes: DIAS_TESTE_GRATIS, pago: false };
+  }
+  const dados = snap.data();
+  if(dados.pago) return { diasRestantes: null, pago: true };
+  const inicio = dados.testeIniciadoEm ? dados.testeIniciadoEm.toDate() : new Date();
+  const diasPassados = Math.floor((Date.now() - inicio.getTime()) / (1000*60*60*24));
+  return { diasRestantes: DIAS_TESTE_GRATIS - diasPassados, pago: false };
+}
+
 // Controla para qual uid os dados já foram carregados nesta sessão do app.
 // O Firebase dispara onAuthStateChanged de novo sozinho em situações normais (renovação de token,
 // reconexão de rede etc.) — sem essa trava, cada disparo buscaria a nuvem de novo e substituiria
@@ -3372,6 +3419,17 @@ onAuthStateChanged(auth, async (user) => {
   if(user){
     if(user.uid === uidCarregado) return; // mesmo usuário já carregado — evento repetido, ignorar
     uidCarregado = user.uid;
+    let licenca;
+    try {
+      licenca = await verificarLicenca(user.uid);
+    } catch(e){
+      console.error('Erro ao verificar licença', e);
+      licenca = { diasRestantes: DIAS_TESTE_GRATIS, pago: false };
+    }
+    if(!licenca.pago && typeof licenca.diasRestantes === 'number' && licenca.diasRestantes <= 0){
+      if(window.__showTesteExpirado) window.__showTesteExpirado();
+      return;
+    }
     let cloudData = null;
     try {
       const snap = await getDoc(doc(dbFire, 'usuarios', user.uid));
@@ -3382,7 +3440,7 @@ onAuthStateChanged(auth, async (user) => {
       console.error('Erro ao carregar dados da nuvem', e);
       if(window.__showSyncWarning) window.__showSyncWarning();
     }
-    window.__fitproReady(cloudData, user.uid, user.email);
+    window.__fitproReady(cloudData, user.uid, user.email, licenca);
   } else {
     uidCarregado = null;
     window.__showLogin();
