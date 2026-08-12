@@ -2606,17 +2606,13 @@ function openAvaliacaoModal(av){
       ⚠️ O % de gordura é uma <strong>estimativa</strong> pelo método US Navy (fita métrica), com margem de erro de aproximadamente 3-4% em relação a exames de laboratório (DEXA), e tende a errar mais em pessoas muito magras ou muito musculosas. Se você tiver adipômetro, bioimpedância ou outro equipamento próprio, digite o valor real por cima — o campo é totalmente editável e seu valor não será sobrescrito sozinho.
     </div>
     <div class="meta" id="avGorduraHint" style="margin-top:-4px;margin-bottom:10px;"></div>
-    <div class="field" style="margin-top:6px;"><label>Fotos de progresso (opcional)</label>
-      <div class="photoUploadRow">
-        ${['frente','lado','costas'].map(k=>`
-          <div>
-            <label style="display:block;text-align:center;font-size:12px;color:var(--muted);margin-bottom:4px;text-transform:capitalize;">${k}</label>
-            <input type="file" accept="image/*" id="avFoto_${k}" style="width:100%;font-size:12px;">
-            <img id="avFotoPrev_${k}" class="photoPreview ${editing && av.fotos && av.fotos[k] ? 'show':''}" src="${editing && av.fotos && av.fotos[k] ? av.fotos[k] : ''}">
-          </div>
-        `).join('')}
-      </div>
-      <div class="meta" style="margin-top:6px;">As fotos são redimensionadas automaticamente para não pesar no navegador.</div>
+    <div class="field" style="margin-top:6px;"><label>Fotos de progresso</label>
+      ${(editing && av.fotos && (av.fotos.frente||av.fotos.lado||av.fotos.costas)) ? `
+        <div class="photoUploadRow">
+          ${['frente','lado','costas'].map(k=> av.fotos[k] ? `<img src="${av.fotos[k]}" data-view-photo="${escapeAttr(av.fotos[k])}" class="photoThumb" title="${k}">` : '').join('')}
+        </div>
+      ` : ''}
+      <div class="meta" style="margin-top:6px;">Envio de novas fotos temporariamente desativado nesta fase inicial — deve voltar em uma atualização futura.</div>
     </div>
     <div class="actions">
       <button class="secondary" onclick="closeModal()">Cancelar</button>
@@ -2624,17 +2620,8 @@ function openAvaliacaoModal(av){
     </div>
   `);
 
-  ['frente','lado','costas'].forEach(k=>{
-    const input = document.getElementById('avFoto_'+k);
-    input.onchange = async ()=>{
-      const file = input.files[0];
-      if(!file) return;
-      const dataUrl = await resizeImageFile(file, 700, 0.72);
-      const prev = document.getElementById('avFotoPrev_'+k);
-      prev.src = dataUrl;
-      prev.classList.add('show');
-      prev.dataset.value = dataUrl;
-    };
+  document.querySelectorAll('#modalBody [data-view-photo]').forEach(el=>{
+    el.onclick = ()=> openPhotoViewer(el.dataset.viewPhoto);
   });
 
   let manualOverride = false;
@@ -2697,11 +2684,8 @@ function openAvaliacaoModal(av){
 
   document.getElementById('avSave').onclick = ()=>{
     const data = document.getElementById('avData').value || today;
-    const fotos = {};
-    ['frente','lado','costas'].forEach(k=>{
-      const prev = document.getElementById('avFotoPrev_'+k);
-      fotos[k] = prev.dataset.value || (editing && av.fotos ? (av.fotos[k]||'') : '');
-    });
+    // Upload de novas fotos está desativado nesta fase; preserva fotos já existentes (edição), se houver.
+    const fotos = (editing && av.fotos) ? av.fotos : {};
     const payload = {
       data,
       idade: document.getElementById('avIdade').value.trim(),
@@ -2967,9 +2951,9 @@ function openRegistroPagamentoModal(s, registro, onDone){
         </select>
       </div>
     </div>
-    <div class="field"><label>Nota fiscal / recibo (opcional — imagem ou PDF, máx. 4MB)</label>
-      <input type="file" accept="image/*,.pdf" id="rpArquivo">
-      <div class="meta" id="rpArquivoNome" style="margin-top:4px;">${editing && registro.notaFiscal ? '📎 '+escapeHtml(registro.notaFiscal.name) : ''}</div>
+    <div class="field"><label>Nota fiscal / recibo</label>
+      ${editing && registro.notaFiscal ? `<div class="meta">📎 <a href="${registro.notaFiscal.dataUrl}" target="_blank" rel="noopener">${escapeHtml(registro.notaFiscal.name)}</a></div>` : ''}
+      <div class="meta" style="margin-top:4px;">Anexar novo arquivo temporariamente desativado nesta fase inicial — deve voltar em uma atualização futura.</div>
     </div>
     <div class="field"><label>Observações</label><textarea id="rpObs">${editing?escapeHtml(registro.obs||''):''}</textarea></div>
     <div class="actions">
@@ -2978,35 +2962,7 @@ function openRegistroPagamentoModal(s, registro, onDone){
     </div>
   `);
 
-  let arquivoData = (editing && registro.notaFiscal) ? registro.notaFiscal : null;
-
-  document.getElementById('rpArquivo').onchange = async ()=>{
-    const input = document.getElementById('rpArquivo');
-    const file = input.files[0];
-    if(!file) return;
-    if(file.size > 4*1024*1024){
-      showToast('Arquivo muito grande (máx. 4MB). Escolha um arquivo menor.', 'error');
-      input.value = '';
-      return;
-    }
-    try{
-      let dataUrl;
-      if(file.type.startsWith('image/')){
-        dataUrl = await resizeImageFile(file, 1200, 0.75);
-      } else {
-        dataUrl = await new Promise((resolve, reject)=>{
-          const reader = new FileReader();
-          reader.onload = ()=> resolve(reader.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-      }
-      arquivoData = { name: file.name, dataUrl };
-      document.getElementById('rpArquivoNome').textContent = '📎 ' + arquivoData.name;
-    }catch(e){
-      showToast('Não foi possível anexar esse arquivo.', 'error');
-    }
-  };
+  const arquivoData = (editing && registro.notaFiscal) ? registro.notaFiscal : null;
 
   document.getElementById('rpCancelar').onclick = ()=> onDone();
 
