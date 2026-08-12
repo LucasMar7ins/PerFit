@@ -404,13 +404,14 @@ function buildDemoStudent(){
 function loadDB(){
   const raw = localStorage.getItem(DB_KEY);
   if(!raw){
-    const seed = { students:[buildDemoStudent()], exercises: defaultExerciseLibrary(), bloqueios: [] };
+    const seed = { students:[buildDemoStudent()], exercises: defaultExerciseLibrary(), bloqueios: [], lixeiraAlunos: [] };
     localStorage.setItem(DB_KEY, JSON.stringify(seed));
     localStorage.setItem(MIGR_KEY, '1');
     return seed;
   }
   const data = JSON.parse(raw);
   if(!data.bloqueios) data.bloqueios = [];
+  if(!data.lixeiraAlunos) data.lixeiraAlunos = [];
   // migração automática: quem já usava a versão antiga (poucos exercícios) recebe a biblioteca completa
   if(localStorage.getItem(MIGR_KEY) !== '1'){
     const existing = new Set((data.exercises||[]).map(e=>e.nome.trim().toLowerCase()));
@@ -786,6 +787,7 @@ function renderStudentsList(){
     </div>
     ${atrasadosCount>0 ? `<div class="banner noprint">⏰ <strong>${atrasadosCount} aluno(s)</strong> estão há mais de ${REAVAL_DIAS_LIMITE} dias sem reavaliação física (ou nunca avaliados). <span style="text-decoration:underline;cursor:pointer;" id="bannerVerAtrasados">Ver quem são</span></div>` : ''}
     ${(()=>{ const b = backupStatus(); if(!b.atrasado) return ''; const msg = b.nunca ? 'Você ainda não exportou nenhum backup dos dados.' : `Já se passaram ${b.dias} dias desde o último backup exportado.`; return `<div class="banner noprint">💾 ${msg} <span style="text-decoration:underline;cursor:pointer;" id="bannerIrBackup">Ir para Backup</span></div>`; })()}
+    ${(db.lixeiraAlunos||[]).length>0 ? `<div class="banner noprint">🗑️ <strong>${db.lixeiraAlunos.length} aluno(s)</strong> na lixeira, ainda podem ser restaurados. <span style="text-decoration:underline;cursor:pointer;" id="bannerVerLixeira">Ver lixeira</span></div>` : ''}
     <div class="card noprint" style="margin-bottom:16px;">
       <div class="field" style="margin-bottom:0;">
         <label>🔎 Buscar aluno</label>
@@ -1223,8 +1225,14 @@ function openBloqueioModal(bloqueioId, presetData){
   if(editing){
     document.getElementById('blDel').onclick = ()=>{
       showConfirm('Remover este bloqueio?', ()=>{
-        db.bloqueios = db.bloqueios.filter(x=>x.id!==bloqueio.id);
+        const idx = db.bloqueios.findIndex(x=>x.id===bloqueio.id);
+        const removido = db.bloqueios[idx];
+        db.bloqueios.splice(idx,1);
         saveDB(); closeModal(); render();
+        showToastDesfazer('Bloqueio removido.', ()=>{
+          db.bloqueios.splice(idx,0,removido);
+          saveDB(); render();
+        });
       }, {danger:true, confirmLabel:'Excluir'});
     };
   }
@@ -1315,8 +1323,15 @@ function openAgendaSlotModal(studentId, slotId, presetData){
   if(editing){
     document.getElementById('agDel').onclick = ()=>{
       showConfirm('Remover este horário da agenda?', ()=>{
-        s.agenda = s.agenda.filter(x=>x.id!==slot.id);
+        const idx = s.agenda.findIndex(x=>x.id===slot.id);
+        const removido = s.agenda[idx];
+        s.agenda.splice(idx,1);
         saveDB(); closeModal(); render();
+        showToastDesfazer('Horário removido da agenda.', ()=>{
+          const s2 = db.students.find(x=>x.id===s.id);
+          s2.agenda.splice(idx,0,removido);
+          saveDB(); render();
+        });
       }, {danger:true, confirmLabel:'Excluir'});
     };
   }
@@ -1765,8 +1780,14 @@ function bindExerciseRowEvents(){
   document.querySelectorAll('[data-del-ex]').forEach(el=>{
     el.onclick = ()=>{
       showConfirm('Excluir este exercício do banco?', ()=>{
-        db.exercises = db.exercises.filter(e=>e.id!==el.dataset.delEx);
+        const idx = db.exercises.findIndex(e=>e.id===el.dataset.delEx);
+        const removido = db.exercises[idx];
+        db.exercises.splice(idx,1);
         saveDB(); render();
+        showToastDesfazer('Exercício excluído.', ()=>{
+          db.exercises.splice(idx,0,removido);
+          saveDB(); render();
+        });
       }, {danger:true, confirmLabel:'Excluir'});
     };
   });
@@ -1860,7 +1881,7 @@ function importBackupFile(file){
         return;
       }
       showConfirm('Isso vai SUBSTITUIR todos os dados atuais por este backup. Deseja continuar?', ()=>{
-        db = { students: parsed.students, exercises: parsed.exercises, bloqueios: parsed.bloqueios||[] };
+        db = { students: parsed.students, exercises: parsed.exercises, bloqueios: parsed.bloqueios||[], lixeiraAlunos: parsed.lixeiraAlunos||[] };
         saveDB();
         localStorage.setItem(MIGR_KEY, '1');
         showToast('Backup restaurado com sucesso.', 'success');
@@ -1903,6 +1924,8 @@ function bindEvents(){
     document.querySelector('nav .tab[data-tab="backup"]').classList.add('active');
     state.tab = 'backup'; state.studentId = null; render();
   };
+  const bannerVerLixeira = document.getElementById('bannerVerLixeira');
+  if(bannerVerLixeira) bannerVerLixeira.onclick = ()=> openLixeiraModal();
   const back = document.getElementById('backToStudents');
   if(back) back.onclick = ()=>{ state.studentId=null; render(); };
 
@@ -1921,9 +1944,14 @@ function bindEvents(){
 
   const btnDelStudent = document.getElementById('btnDelStudent');
   if(btnDelStudent) btnDelStudent.onclick = ()=>{
-    showConfirm('Excluir este aluno e todas as fichas dele?', ()=>{
-      db.students = db.students.filter(s=>s.id!==state.studentId);
+    showConfirm('Excluir este aluno e todas as fichas dele? Ele vai para a lixeira e pode ser restaurado depois.', ()=>{
+      db.lixeiraAlunos = db.lixeiraAlunos || [];
+      const idx = db.students.findIndex(s=>s.id===state.studentId);
+      const removido = db.students[idx];
+      db.students.splice(idx,1);
+      db.lixeiraAlunos.push({...removido, excluidoEm: new Date().toISOString()});
       saveDB(); state.studentId=null; render();
+      showToast('Aluno movido para a lixeira.', 'success');
     }, {danger:true, confirmLabel:'Excluir'});
   };
 
@@ -2033,8 +2061,15 @@ function bindEvents(){
     el.onclick = ()=>{
       showConfirm('Excluir esta avaliação?', ()=>{
         const s = db.students.find(x=>x.id===state.studentId);
-        s.avaliacoes = s.avaliacoes.filter(x=>x.id!==el.dataset.delAval);
+        const idx = s.avaliacoes.findIndex(x=>x.id===el.dataset.delAval);
+        const removida = s.avaliacoes[idx];
+        s.avaliacoes.splice(idx,1);
         saveDB(); render();
+        showToastDesfazer('Avaliação excluída.', ()=>{
+          const s2 = db.students.find(x=>x.id===state.studentId);
+          s2.avaliacoes.splice(idx,0,removida);
+          saveDB(); render();
+        });
       }, {danger:true, confirmLabel:'Excluir'});
     };
   });
@@ -2052,8 +2087,15 @@ function bindEvents(){
     el.onclick = ()=>{
       showConfirm('Excluir este registro de carga?', ()=>{
         const s = db.students.find(x=>x.id===state.studentId);
-        s.cargaLog = s.cargaLog.filter(x=>x.id!==el.dataset.delCarga);
+        const idx = s.cargaLog.findIndex(x=>x.id===el.dataset.delCarga);
+        const removido = s.cargaLog[idx];
+        s.cargaLog.splice(idx,1);
         saveDB(); render();
+        showToastDesfazer('Registro de carga excluído.', ()=>{
+          const s2 = db.students.find(x=>x.id===state.studentId);
+          s2.cargaLog.splice(idx,0,removido);
+          saveDB(); render();
+        });
       }, {danger:true, confirmLabel:'Excluir'});
     };
   });
@@ -2196,8 +2238,15 @@ function bindEvents(){
     el.onclick = ()=>{
       showConfirm('Excluir esta ficha?', ()=>{
         const s = db.students.find(x=>x.id===state.studentId);
-        s.fichas = s.fichas.filter(x=>x.id!==el.dataset.delFicha);
+        const idx = s.fichas.findIndex(x=>x.id===el.dataset.delFicha);
+        const removida = s.fichas[idx];
+        s.fichas.splice(idx,1);
         saveDB(); render();
+        showToastDesfazer('Ficha excluída.', ()=>{
+          const s2 = db.students.find(x=>x.id===state.studentId);
+          s2.fichas.splice(idx,0,removida);
+          saveDB(); render();
+        });
       }, {danger:true, confirmLabel:'Excluir'});
     };
   });
@@ -2317,6 +2366,32 @@ function showToast(message, type){
     setTimeout(()=> el.remove(), 250);
   }, 3400);
 }
+function showToastDesfazer(message, onDesfazer){
+  const container = document.getElementById('toastContainer');
+  if(!container) return;
+  const el = document.createElement('div');
+  el.className = 'toast toast-info';
+  el.style.display = 'flex';
+  el.style.alignItems = 'center';
+  el.style.justifyContent = 'space-between';
+  el.style.gap = '10px';
+  el.innerHTML = `<span>${escapeHtml(message)}</span><button class="ghost small" style="flex-shrink:0;">Desfazer</button>`;
+  container.appendChild(el);
+  const raf = (typeof window !== 'undefined' && window.requestAnimationFrame) ? window.requestAnimationFrame.bind(window) : (cb)=>setTimeout(cb,16);
+  raf(()=> el.classList.add('show'));
+  let desfeito = false;
+  const remover = ()=>{
+    el.classList.remove('show');
+    setTimeout(()=> el.remove(), 250);
+  };
+  el.querySelector('button').onclick = ()=>{
+    if(desfeito) return;
+    desfeito = true;
+    onDesfazer();
+    remover();
+  };
+  setTimeout(()=>{ if(!desfeito) remover(); }, 8000);
+}
 function showConfirm(message, onConfirm, opts){
   opts = opts || {};
   openModal(`
@@ -2335,6 +2410,55 @@ function showConfirm(message, onConfirm, opts){
     closeModal();
     onConfirm();
   };
+}
+
+function openLixeiraModal(){
+  db.lixeiraAlunos = db.lixeiraAlunos || [];
+  const itens = db.lixeiraAlunos.slice().sort((a,b)=> (b.excluidoEm||'').localeCompare(a.excluidoEm||''));
+  openModal(`
+    <h3>Lixeira de alunos</h3>
+    <div class="meta" style="margin-bottom:14px;">Alunos excluídos ficam aqui até você restaurar ou excluir definitivamente.</div>
+    ${itens.length===0 ? '<div class="meta">A lixeira está vazia.</div>' : itens.map(a=>`
+      <div class="card" style="margin-bottom:10px;padding:12px;">
+        <div class="row" style="justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div>
+            <div style="font-weight:600;">${escapeHtml(a.nome)}</div>
+            <div class="meta">Excluído em ${formatDate(a.excluidoEm)}</div>
+          </div>
+          <div class="row" style="gap:6px;">
+            <button class="secondary small" data-restaurar-aluno="${escapeAttr(a.id)}">Restaurar</button>
+            <button class="danger small" data-excluir-def-aluno="${escapeAttr(a.id)}">Excluir definitivamente</button>
+          </div>
+        </div>
+      </div>
+    `).join('')}
+    <div class="actions"><button class="secondary" onclick="closeModal()">Fechar</button></div>
+  `);
+  document.querySelectorAll('[data-restaurar-aluno]').forEach(el=>{
+    el.onclick = ()=>{
+      const alunoId = el.dataset.restaurarAluno;
+      const idx = db.lixeiraAlunos.findIndex(a=>a.id===alunoId);
+      if(idx===-1) return;
+      const aluno = db.lixeiraAlunos[idx];
+      const { excluidoEm, ...alunoRestaurado } = aluno;
+      db.lixeiraAlunos.splice(idx,1);
+      db.students.push(alunoRestaurado);
+      saveDB();
+      closeModal();
+      render();
+      showToast('Aluno restaurado.', 'success');
+    };
+  });
+  document.querySelectorAll('[data-excluir-def-aluno]').forEach(el=>{
+    el.onclick = ()=>{
+      const alunoId = el.dataset.excluirDefAluno;
+      showConfirm('Excluir este aluno definitivamente? Essa ação não pode ser desfeita.', ()=>{
+        db.lixeiraAlunos = db.lixeiraAlunos.filter(a=>a.id!==alunoId);
+        saveDB();
+        openLixeiraModal();
+      }, {danger:true, confirmLabel:'Excluir definitivamente'});
+    };
+  });
 }
 
 function openStudentModal(student){
@@ -2798,9 +2922,16 @@ function openPagamentosModal(studentId){
   document.querySelectorAll('[data-del-pg]').forEach(el=>{
     el.onclick = ()=>{
       showConfirm('Excluir este registro de pagamento?', ()=>{
-        s.pagamentos = s.pagamentos.filter(x=>x.id!==el.dataset.delPg);
+        const idx = s.pagamentos.findIndex(x=>x.id===el.dataset.delPg);
+        const removido = s.pagamentos[idx];
+        s.pagamentos.splice(idx,1);
         saveDB();
         openPagamentosModal(studentId);
+        showToastDesfazer('Registro de pagamento excluído.', ()=>{
+          const s2 = db.students.find(x=>x.id===studentId);
+          s2.pagamentos.splice(idx,0,removido);
+          saveDB(); render();
+        });
       }, {danger:true, confirmLabel:'Excluir'});
     };
   });
@@ -3215,6 +3346,7 @@ window.__fitproReady = function(cloudData, uid, email){
   if(cloudData){
     db = cloudData;
     if(!db.bloqueios) db.bloqueios = [];
+    if(!db.lixeiraAlunos) db.lixeiraAlunos = [];
   } else {
     db = loadDB();
     saveDB();
