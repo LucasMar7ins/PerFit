@@ -740,6 +740,19 @@ function diasSemUso(item){
   if(!ref) return null;
   return Math.floor((Date.now() - new Date(ref).getTime()) / 86400000);
 }
+function linkEmailRenovacao(item){
+  const destino = item.email || '';
+  let assunto, corpo;
+  if(item.statusPlano === 'expirado'){
+    assunto = 'Seu teste grátis do FitPro Manager terminou';
+    corpo = 'Oi!\n\nVi que seu período de teste grátis do FitPro Manager já terminou. Espero que tenha gostado de usar pra organizar seus alunos e treinos!\n\nSe quiser continuar usando, é só responder este e-mail que a gente combina a continuidade.\n\nQualquer dúvida, é só chamar.\n\nAbraço,\nLucas';
+  } else {
+    const dias = item.diasRestantes != null ? item.diasRestantes : 0;
+    assunto = 'Seu teste grátis do FitPro Manager está acabando';
+    corpo = `Oi!\n\nNotei que seu período de teste grátis do FitPro Manager termina em ${dias} dia(s).\n\nEspero que esteja curtindo organizar seus alunos e treinos por lá! Se quiser continuar usando depois do teste, é só responder este e-mail que a gente combina a continuidade.\n\nQualquer dúvida, também é só chamar.\n\nAbraço,\nLucas`;
+  }
+  return `mailto:${destino}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
+}
 async function carregarPainelUso(){
   if(!window.__buscarPainelUso) return;
   try{
@@ -760,6 +773,7 @@ async function carregarPainelUso(){
       const corTamanho = pctTamanho >= 80 ? 'var(--red)' : (pctTamanho >= 50 ? 'var(--yellow)' : 'var(--muted)');
       const dias = diasSemUso(item);
       const inativo = dias !== null && dias >= 14;
+      const precisaRenovar = item.statusPlano === 'teste' || item.statusPlano === 'expirado';
       return `<tr>
         <td>${escapeHtml(item.email || item.uid)}</td>
         <td>${statusPlanoLabel(item)}</td>
@@ -767,6 +781,7 @@ async function carregarPainelUso(){
         <td>${formatDataHora(item.ultimaAtividade)} ${inativo ? `<span class="tag yellow">⚠️ ${dias}d sem uso</span>` : ''}</td>
         <td>${horas}h ${min}min <span style="color:var(--muted);font-size:11px;">(${qtdSessoes} sessão(ões))</span></td>
         <td style="color:${corTamanho};font-weight:600;">${pctTamanho}%</td>
+        <td>${precisaRenovar ? `<a href="${escapeAttr(linkEmailRenovacao(item))}" style="display:inline-block;text-decoration:none;background:var(--accent);color:#fff;padding:5px 12px;border-radius:7px;font-weight:600;font-size:12px;white-space:nowrap;">✉️ Gerar e-mail</a>` : ''}</td>
       </tr>`;
     }).join('');
     main.innerHTML = `
@@ -792,8 +807,8 @@ async function carregarPainelUso(){
       </div>
       <div class="card" style="overflow-x:auto;">
         <table>
-          <thead><tr><th>E-mail</th><th>Plano</th><th>Último login</th><th>Última atividade</th><th>Tempo total de uso</th><th title="% do limite de tamanho de dados">Dados</th></tr></thead>
-          <tbody>${linhas || '<tr><td colspan="6" class="empty">Nenhum dado de uso ainda.</td></tr>'}</tbody>
+          <thead><tr><th>E-mail</th><th>Plano</th><th>Último login</th><th>Última atividade</th><th>Tempo total de uso</th><th title="% do limite de tamanho de dados">Dados</th><th>Ação</th></tr></thead>
+          <tbody>${linhas || '<tr><td colspan="7" class="empty">Nenhum dado de uso ainda.</td></tr>'}</tbody>
         </table>
       </div>
       <div class="meta" style="margin-top:10px;">💡 Contas que nunca fizeram login não aparecem aqui — pra ver essas, confira a lista de usuários direto no Firebase Console (aba Authentication).</div>
