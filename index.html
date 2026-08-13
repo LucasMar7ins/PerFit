@@ -138,6 +138,20 @@
   .studentCard:hover{border-color:var(--accent);}
   .studentCard h3{margin:0 0 4px;font-size:16px;font-weight:600;}
   .studentCard .meta{color:var(--muted);font-size:12px;}
+  .dashGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;}
+  @media (max-width:760px){ .dashGrid{grid-template-columns:1fr;} }
+  .dashCard{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:10px;padding:14px;cursor:pointer;transition:.15s;}
+  .dashCard:hover{border-color:var(--accent);}
+  .dashCard.danger{border-left-color:var(--red);}
+  .dashCard.warning{border-left-color:var(--yellow);}
+  .dashCardIcon{font-size:17px;margin-bottom:8px;}
+  .dashCardValue{font-size:22px;font-weight:600;color:var(--text);}
+  .dashCardLabel{font-size:12px;color:var(--muted);}
+  .dashPanels{display:grid;grid-template-columns:1.1fr 1fr;gap:14px;}
+  @media (max-width:760px){ .dashPanels{grid-template-columns:1fr;} }
+  .dashListRow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;cursor:pointer;}
+  .dashListRow:last-child{border-bottom:none;}
+  .dashListRow:hover span:first-child{color:var(--accent);}
   .savingIndicator{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);}
   .savingSpin{width:10px;height:10px;border-radius:50%;border:2px solid var(--accent);border-top-color:transparent;display:inline-block;animation:girarSalvando .7s linear infinite;}
   @keyframes girarSalvando{to{transform:rotate(360deg);}}
@@ -262,7 +276,8 @@
 <div class="app">
   <nav style="display:none;">
     <h1>Fit<span>Pro</span> Manager</h1>
-    <div class="tab active" data-tab="alunos">👤 Alunos</div>
+    <div class="tab active" data-tab="inicio">🏠 Início</div>
+    <div class="tab" data-tab="alunos">👤 Alunos</div>
     <div class="tab" data-tab="pagamentos">💳 Pagamentos</div>
     <div class="tab" data-tab="agenda">🗓️ Agenda</div>
     <div class="tab" data-tab="exercicios">🏋️ Banco de Exercícios</div>
@@ -522,7 +537,7 @@ function appIconUrl(){
   const l = document.querySelector('link[rel="apple-touch-icon"]');
   return l ? l.href : '';
 }
-let state = { tab:'alunos', studentId:null, chartMetric:'peso', studentFilter:'ativos', collapsedSections: { anamnese:true, evolucao:true, avaliacoes:true, fichas:false, cargas:false }, agendaView:null, agendaRef:null, printRecibo:null, printAvaliacao:null, treinoAoVivo:null, exerciseCollapsedGroups:{}, planejamentoSemanasQtd:3, planejamentoExpandido:null };
+let state = { tab:'inicio', studentId:null, chartMetric:'peso', studentFilter:'ativos', collapsedSections: { anamnese:true, evolucao:true, avaliacoes:true, fichas:false, cargas:false }, agendaView:null, agendaRef:null, printRecibo:null, printAvaliacao:null, treinoAoVivo:null, exerciseCollapsedGroups:{}, planejamentoSemanasQtd:3, planejamentoExpandido:null };
 // Precisa existir também aqui (além do bloco que fala com o Firebase) porque são dois
 // blocos de código separados (script normal x script "module") e não compartilham variáveis.
 const ADMIN_EMAIL = 'lucaspsneves1@gmail.com';
@@ -707,6 +722,8 @@ function render(){
     main.innerHTML = renderAvaliacaoPrint(state.printAvaliacao.studentId, state.printAvaliacao.avaliacaoId);
   } else if(state.treinoAoVivo){
     main.innerHTML = renderTreinoAoVivo(state.treinoAoVivo.studentId, state.treinoAoVivo.fichaId);
+  } else if(state.tab === 'inicio'){
+    main.innerHTML = renderInicio();
   } else if(state.tab === 'alunos'){
     main.innerHTML = state.studentId ? renderStudentDetail(state.studentId) : renderStudentsList();
   } else if(state.tab === 'pagamentos'){
@@ -1118,6 +1135,67 @@ function renderPagamentos(){
         <thead><tr><th>Aluno</th><th>Status (${formatMes(mesAtual())})</th><th>Vencimento</th><th>Mensalidade</th><th>Método</th><th class="noprint"></th></tr></thead>
         <tbody>${linhas || `<tr><td colspan="6" class="empty">Nenhum aluno ativo cadastrado.</td></tr>`}</tbody>
       </table>
+    </div>
+  `;
+}
+
+// ---------- INÍCIO (DASHBOARD) ----------
+function diasAtrasoPagamento(s){
+  const cfg = s.pagamento || {};
+  if(!cfg.diaVencimento) return null;
+  const hoje = new Date();
+  const vencimento = new Date(hoje.getFullYear(), hoje.getMonth(), cfg.diaVencimento);
+  const dias = Math.floor((hoje - vencimento) / 86400000);
+  return dias > 0 ? dias : 0;
+}
+function renderInicio(){
+  const alunosAtivos = db.students.filter(s=>(s.status||'ativo')==='ativo');
+  const dataISO = isoHoje();
+  const diaKey = diaSemanaFromISODate(dataISO);
+  const agendaHoje = ocorrenciasDoDia(alunosAtivos, dataISO, diaKey);
+  const atrasados = alunosAtivos.filter(s=>statusPagamentoAluno(s).status==='atrasado')
+    .map(s=>({ aluno:s, dias: diasAtrasoPagamento(s) }))
+    .sort((a,b)=> (b.dias||0)-(a.dias||0));
+  const reavaliacoesPendentes = alunosAtivos.filter(s=>{ const r = reavaliacaoStatus(s); return r && r.atrasada; });
+  const hojeFormatado = new Date().toLocaleDateString('pt-BR', {weekday:'long', day:'numeric', month:'long'});
+
+  const listaAgenda = agendaHoje.length
+    ? agendaHoje.map(a=>`<div class="dashListRow" data-inicio-open-student="${a.aluno.id}"><span>${escapeHtml(a.aluno.nome)}</span><span style="color:var(--accent);font-weight:600;">${escapeHtml(a.horario||'-')}</span></div>`).join('')
+    : `<div class="empty" style="padding:14px 0;">Nenhum treino agendado para hoje.</div>`;
+
+  const listaAtrasados = atrasados.length
+    ? atrasados.map(a=>`<div class="dashListRow" data-inicio-tab="pagamentos"><span>${escapeHtml(a.aluno.nome)}</span><span class="tag red">${a.dias!=null ? a.dias+' dia(s)' : 'atrasado'}</span></div>`).join('')
+    : `<div class="empty" style="padding:14px 0;">Nenhum pagamento atrasado. 🎉</div>`;
+
+  return `
+    <h2>Início</h2>
+    <div class="sub" style="text-transform:capitalize;">${escapeHtml(hojeFormatado)}</div>
+    <div class="dashGrid">
+      <div class="dashCard" data-inicio-tab="agenda">
+        <div class="dashCardIcon">🗓️</div>
+        <div class="dashCardValue">${agendaHoje.length}</div>
+        <div class="dashCardLabel">Aluno(s) hoje</div>
+      </div>
+      <div class="dashCard danger" data-inicio-tab="pagamentos">
+        <div class="dashCardIcon">⚠️</div>
+        <div class="dashCardValue">${atrasados.length}</div>
+        <div class="dashCardLabel">Pagamento(s) atrasado(s)</div>
+      </div>
+      <div class="dashCard warning" data-inicio-tab="alunos">
+        <div class="dashCardIcon">📋</div>
+        <div class="dashCardValue">${reavaliacoesPendentes.length}</div>
+        <div class="dashCardLabel">Reavaliação pendente</div>
+      </div>
+    </div>
+    <div class="dashPanels">
+      <div class="card">
+        <div style="font-weight:600;margin-bottom:8px;">Agenda de hoje</div>
+        ${listaAgenda}
+      </div>
+      <div class="card">
+        <div style="font-weight:600;margin-bottom:8px;">Pagamentos atrasados</div>
+        ${listaAtrasados}
+      </div>
     </div>
   `;
 }
@@ -2246,6 +2324,24 @@ function bindEvents(){
     const file = e.target.files[0];
     if(file) importBackupFile(file);
   };
+
+  document.querySelectorAll('[data-inicio-tab]').forEach(el=>{
+    el.onclick = ()=>{
+      const alvo = el.dataset.inicioTab;
+      document.querySelectorAll('nav .tab').forEach(x=>x.classList.remove('active'));
+      const tabEl = document.querySelector(`nav .tab[data-tab="${alvo}"]`);
+      if(tabEl) tabEl.classList.add('active');
+      state.tab = alvo; state.studentId = null; render();
+    };
+  });
+  document.querySelectorAll('[data-inicio-open-student]').forEach(el=>{
+    el.onclick = ()=>{
+      document.querySelectorAll('nav .tab').forEach(x=>x.classList.remove('active'));
+      const tabEl = document.querySelector('nav .tab[data-tab="alunos"]');
+      if(tabEl) tabEl.classList.add('active');
+      state.tab = 'alunos'; state.studentId = el.dataset.inicioOpenStudent; state.planejamentoExpandido = null; render();
+    };
+  });
 
   bindStudentCardEvents();
   const studentSearchInput = document.getElementById('studentSearchInput');
