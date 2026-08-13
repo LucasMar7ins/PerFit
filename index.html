@@ -267,6 +267,7 @@
     <div class="tab" data-tab="agenda">🗓️ Agenda</div>
     <div class="tab" data-tab="exercicios">🏋️ Banco de Exercícios</div>
     <div class="tab" data-tab="backup">💾 Backup</div>
+    <div class="tab" data-tab="uso" id="navTabUso" style="display:none;">📊 Uso</div>
     <div class="tab" id="navSair" style="margin-top:20px;border-top:1px solid var(--line);color:var(--muted);">🚪 Sair</div>
     <div id="navUsuario" style="padding:10px 20px;font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 0 auto;max-width:220px;"></div>
     <div id="navTeste" style="padding:0 20px 10px;font-size:11px;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 0 auto;max-width:220px;"></div>
@@ -712,8 +713,53 @@ function render(){
     main.innerHTML = renderExercises();
   } else if(state.tab === 'backup'){
     main.innerHTML = renderBackup();
+  } else if(state.tab === 'uso'){
+    main.innerHTML = '<h2>Uso por personal</h2><div class="sub">Login, última atividade e tempo total de uso de cada conta. Valores aproximados.</div><div class="empty">Carregando dados de uso...</div>';
+    carregarPainelUso();
   }
   bindEvents();
+}
+function formatDataHora(iso){
+  if(!iso) return '-';
+  const d = new Date(iso);
+  if(isNaN(d.getTime())) return '-';
+  return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+}
+async function carregarPainelUso(){
+  if(!window.__buscarPainelUso) return;
+  try{
+    const lista = await window.__buscarPainelUso();
+    if(state.tab !== 'uso') return;
+    const main = document.getElementById('main');
+    if(!main) return;
+    const linhas = lista.map(item=>{
+      const totalMin = Math.round(item.minutosAcumulados || 0);
+      const horas = Math.floor(totalMin / 60);
+      const min = totalMin % 60;
+      const qtdSessoes = (item.historico || []).length + (item.sessaoAtual ? 1 : 0);
+      return `<tr>
+        <td>${escapeHtml(item.email || item.uid)}</td>
+        <td>${formatDataHora(item.ultimoLogin)}</td>
+        <td>${formatDataHora(item.ultimaAtividade)}</td>
+        <td>${horas}h ${min}min</td>
+        <td>${qtdSessoes} sessão(ões)</td>
+      </tr>`;
+    }).join('');
+    main.innerHTML = `
+      <h2>Uso por personal</h2>
+      <div class="sub">Login, última atividade e tempo total de uso de cada conta. Valores aproximados (atualizados a cada minuto de uso ativo).</div>
+      <div class="card" style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>E-mail</th><th>Último login</th><th>Última atividade</th><th>Tempo total de uso</th><th>Sessões</th></tr></thead>
+          <tbody>${linhas || '<tr><td colspan="5" class="empty">Nenhum dado de uso ainda.</td></tr>'}</tbody>
+        </table>
+      </div>
+    `;
+  } catch(e){
+    console.error('Erro ao carregar painel de uso', e);
+    const main = document.getElementById('main');
+    if(main) main.innerHTML = '<h2>Uso por personal</h2><div class="empty">Não foi possível carregar os dados de uso.</div>';
+  }
 }
 
 function renderFichaPrint(studentId, fichaId){
@@ -3676,6 +3722,8 @@ window.__fitproReady = function(cloudData, uid, email, licenca){
   if(navEl) navEl.style.display = '';
   const navUsuario = document.getElementById('navUsuario');
   if(navUsuario) navUsuario.textContent = email || '';
+  const navTabUso = document.getElementById('navTabUso');
+  if(navTabUso) navTabUso.style.display = (email === ADMIN_EMAIL) ? '' : 'none';
   const navTeste = document.getElementById('navTeste');
   if(navTeste){
     if(licenca && !licenca.pago && typeof licenca.diasRestantes === 'number'){
@@ -3756,6 +3804,10 @@ window.__fbResetPassword = (email) => sendPasswordResetEmail(auth, email);
 
 // Fila de salvamentos: garante que cada salvamento na nuvem só comece depois do anterior terminar,
 // evitando que escritas concorrentes cheguem ao Firestore fora de ordem.
+// E-mail da conta que pode ver o painel de uso (aba "Uso"), com dados de login/atividade
+// de todas as contas. Não dá acesso aos dados dos alunos de cada personal — só a esses
+// metadados de uso, guardados numa coleção separada.
+const ADMIN_EMAIL = 'lucaspsneves1@gmail.com';
 let filaSalvamento = Promise.resolve();
 // Detecção de conflito entre aparelhos: guardamos o "atualizadoEm" mais recente que ESTE
 // aparelho conhece. Se, na hora de salvar, o documento na nuvem tiver um "atualizadoEm"
@@ -3788,6 +3840,102 @@ async function fazerBackupDiarioSeNecessario(uid, payload, atualizadoEm){
     console.error('Falha ao criar backup automático diário (não afeta o salvamento normal)', e);
   }
 }
+
+// ---------- PAINEL DE USO (admin) ----------
+// Registra login, última atividade e tempo de uso por conta numa coleção separada
+// ("atividade"), sem nenhum dado de aluno — só metadados de uso. Um "ping" a cada minuto
+// de aba visível/ativa vai atualizando a sessão atual; se a aba fecha sem avisar, a sessão
+// é fechada no próximo login com base no último ping registrado.
+let pingAtividadeInterval = null;
+let sessaoAtividadeInicio = null;
+async function iniciarRastreamentoAtividade(uid, email){
+  pararRastreamentoAtividade();
+  try{
+    const ref = doc(dbFire, 'atividade', uid);
+    const snap = await getDoc(ref);
+    const agora = new Date().toISOString();
+    let historico = [];
+    let primeiroLogin = agora;
+    if(snap.exists()){
+      const dados = snap.data();
+      historico = Array.isArray(dados.historico) ? dados.historico : [];
+      primeiroLogin = dados.primeiroLogin || agora;
+      if(dados.sessaoAtual && dados.sessaoAtual.inicio && dados.sessaoAtual.ultimoPing){
+        const inicioAnterior = new Date(dados.sessaoAtual.inicio).getTime();
+        const fimAnterior = new Date(dados.sessaoAtual.ultimoPing).getTime();
+        const minutosAnterior = Math.max(0, Math.round((fimAnterior - inicioAnterior) / 60000));
+        if(minutosAnterior > 0){
+          historico.push({ inicio: dados.sessaoAtual.inicio, fim: dados.sessaoAtual.ultimoPing, minutos: minutosAnterior });
+        }
+      }
+    }
+    if(historico.length > 20) historico = historico.slice(historico.length - 20);
+    sessaoAtividadeInicio = agora;
+    await setDoc(ref, {
+      email: email || '',
+      uid,
+      primeiroLogin,
+      ultimoLogin: agora,
+      ultimaAtividade: agora,
+      sessaoAtual: { inicio: agora, ultimoPing: agora },
+      historico
+    }, { merge: true });
+    pingAtividadeInterval = setInterval(()=> pingAtividade(uid), 60000);
+    document.addEventListener('visibilitychange', tratarVisibilidadeAtividade);
+    window.addEventListener('beforeunload', ()=> pingAtividade(uid, true));
+  } catch(e){
+    console.error('Falha ao iniciar rastreamento de atividade (não afeta o uso do app)', e);
+  }
+}
+function tratarVisibilidadeAtividade(){
+  if(document.visibilityState === 'visible' && currentUid){
+    pingAtividade(currentUid);
+  }
+}
+async function pingAtividade(uid, forcar){
+  if(!uid || !sessaoAtividadeInicio) return;
+  if(document.visibilityState !== 'visible' && !forcar) return;
+  try{
+    const agora = new Date().toISOString();
+    await setDoc(doc(dbFire, 'atividade', uid), {
+      ultimaAtividade: agora,
+      sessaoAtual: { inicio: sessaoAtividadeInicio, ultimoPing: agora }
+    }, { merge: true });
+  } catch(e){ /* falha de ping não é crítica, próximo ping tenta de novo */ }
+}
+function pararRastreamentoAtividade(){
+  if(pingAtividadeInterval){ clearInterval(pingAtividadeInterval); pingAtividadeInterval = null; }
+  sessaoAtividadeInicio = null;
+  document.removeEventListener('visibilitychange', tratarVisibilidadeAtividade);
+}
+window.__buscarPainelUso = async function(){
+  if(!auth.currentUser || auth.currentUser.email !== ADMIN_EMAIL) return [];
+  const col = collection(dbFire, 'atividade');
+  const snap = await getDocs(col);
+  const lista = [];
+  snap.forEach(d=>{
+    const dados = d.data();
+    let minutosAcumulados = 0;
+    (dados.historico || []).forEach(s=>{ minutosAcumulados += (s.minutos || 0); });
+    if(dados.sessaoAtual && dados.sessaoAtual.inicio && dados.sessaoAtual.ultimoPing){
+      const ini = new Date(dados.sessaoAtual.inicio).getTime();
+      const fim = new Date(dados.sessaoAtual.ultimoPing).getTime();
+      minutosAcumulados += Math.max(0, Math.round((fim - ini) / 60000));
+    }
+    lista.push({
+      uid: d.id,
+      email: dados.email || d.id,
+      ultimoLogin: dados.ultimoLogin || null,
+      ultimaAtividade: dados.ultimaAtividade || null,
+      minutosAcumulados,
+      historico: dados.historico || [],
+      sessaoAtual: dados.sessaoAtual || null
+    });
+  });
+  lista.sort((a,b)=> (b.ultimaAtividade || '').localeCompare(a.ultimaAtividade || ''));
+  return lista;
+};
+
 window.__cloudSave = (uid, data) => {
   const payload = JSON.stringify(data);
   const atualizadoEm = new Date().toISOString();
@@ -3871,8 +4019,10 @@ onAuthStateChanged(auth, async (user) => {
       if(window.__showSyncWarning) window.__showSyncWarning();
     }
     window.__fitproReady(cloudData, user.uid, user.email, licenca);
+    iniciarRastreamentoAtividade(user.uid, user.email);
   } else {
     uidCarregado = null;
+    pararRastreamentoAtividade();
     window.__showLogin();
   }
 });
