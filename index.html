@@ -51,8 +51,8 @@
   th{text-align:left;color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;padding:8px;border-bottom:1px solid var(--line);}
   td{padding:9px 8px;border-bottom:1px solid var(--line);}
   .tip{position:relative;display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:var(--line);color:var(--muted);font-size:10px;font-weight:700;cursor:help;margin-left:4px;vertical-align:middle;}
-  .tip .tiptext{visibility:hidden;opacity:0;transition:opacity .15s;position:absolute;bottom:20px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;text-align:left;padding:8px 10px;border-radius:6px;font-size:11px;font-weight:400;text-transform:none;width:190px;line-height:1.4;z-index:10;}
-  .tip:hover .tiptext,.tip:active .tiptext{visibility:visible;opacity:1;}
+  .tip .tiptext{visibility:hidden;opacity:0;transition:opacity .15s;position:fixed;background:var(--text);color:#fff;text-align:left;padding:8px 10px;border-radius:6px;font-size:11px;font-weight:400;text-transform:none;width:190px;line-height:1.4;z-index:999;box-shadow:0 4px 14px rgba(0,0,0,.25);}
+  .tip.open .tiptext{visibility:visible;opacity:1;}
   tr:hover td{background:rgba(255,255,255,0.02);}
   .tag{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;}
   .tag.green{background:rgba(52,211,153,.15);color:var(--green);}
@@ -2373,6 +2373,36 @@ function bindEvents(){
       saveDB(); render();
     };
   });
+  document.querySelectorAll('.tip').forEach(tip=>{
+    const tt = tip.querySelector('.tiptext');
+    if(!tt) return;
+    const posiciona = ()=>{
+      const r = tip.getBoundingClientRect();
+      const w = 190;
+      let left = r.left + r.width/2 - w/2;
+      left = Math.min(Math.max(8, left), window.innerWidth - w - 8);
+      let top = r.top - tt.offsetHeight - 8;
+      if(top < 8) top = r.bottom + 8;
+      tt.style.left = left+'px';
+      tt.style.top = top+'px';
+    };
+    tip.onmouseenter = posiciona;
+    tip.onclick = (e)=>{
+      e.stopPropagation();
+      const jaAberto = tip.classList.contains('open');
+      document.querySelectorAll('.tip.open').forEach(t=>t.classList.remove('open'));
+      if(!jaAberto){ posiciona(); tip.classList.add('open'); }
+    };
+  });
+  if(!window._tipCloseBound){
+    window._tipCloseBound = true;
+    document.addEventListener('click', ()=>{
+      document.querySelectorAll('.tip.open').forEach(t=>t.classList.remove('open'));
+    });
+    window.addEventListener('scroll', ()=>{
+      document.querySelectorAll('.tip.open').forEach(t=>t.classList.remove('open'));
+    }, true);
+  }
   document.querySelectorAll('[data-field-exec]').forEach(el=>{
     el.addEventListener('change', ()=>{
       const [fichaId, execId, field] = el.dataset.fieldExec.split('|');
