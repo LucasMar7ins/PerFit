@@ -190,7 +190,7 @@
   .savePill.show{opacity:1;transform:translateY(0);}
   .savePill.ok{color:var(--green);border-color:var(--green);}
   .savePillCheck{color:var(--green);font-weight:700;}
-  .toast{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);color:var(--text);padding:12px 14px;border-radius:8px;font-size:13px;box-shadow:0 6px 18px rgba(0,0,0,.35);opacity:0;transform:translateX(24px);transition:opacity .25s ease,transform .25s ease;}
+  .toast{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);color:var(--text);padding:12px 14px;border-radius:8px;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,.08);opacity:0;transform:translateX(24px);transition:opacity .25s ease,transform .25s ease;}
   .toast.show{opacity:1;transform:translateX(0);}
   .toast.toast-success{border-left-color:var(--green);}
   .toast.toast-error{border-left-color:var(--red);}
@@ -1833,7 +1833,7 @@ function renderStudentDetail(id){
           </tr>`;
     }).join('');
     return `
-    <div class="card" style="${ehFichaDeHoje?'border-color:var(--accent);':''}">
+    <div class="card" style="${ehFichaDeHoje?'border-color:var(--accent);background:rgba(110,45,231,.06);':''}">
       <div class="fichaHeader">
         <div class="row">
           <div class="fichaTag">${escapeHtml(f.letra)}</div>
