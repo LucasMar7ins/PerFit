@@ -123,6 +123,9 @@
   .liveInput{width:100%;font-size:18px;padding:10px;text-align:center;border-radius:8px;}
   .legendDot{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;vertical-align:middle;}
   .banner{border:1px solid var(--yellow);background:rgba(251,191,36,.08);border-radius:9px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--text);display:flex;align-items:center;gap:10px;}
+  .banner.danger{border-color:var(--red);background:rgba(220,38,38,.08);}
+  .fichaTableWrap{position:relative;}
+  .scrollHint{display:none;}
   .compareCol{flex:1;min-width:0;}
   .compareCol table{font-size:13px;}
   .empty{color:var(--muted);text-align:center;padding:30px;font-size:14px;}
@@ -207,6 +210,7 @@
       border-left:none;border-bottom:3px solid transparent;
     }
     nav .tab.active{border-left:none;border-bottom-color:var(--accent);}
+    .scrollHint{display:flex;position:absolute;top:0;right:0;bottom:0;width:32px;align-items:center;justify-content:flex-end;padding-right:4px;background:linear-gradient(to right, rgba(255,255,255,0), var(--panel) 65%);color:var(--accent);font-size:14px;pointer-events:none;}
     main{padding:16px;max-width:100%;}
     h2{font-size:19px;}
     .card{padding:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;}
@@ -942,7 +946,7 @@ function renderStudentsList(){
       <button id="btnAddStudent">+ Novo aluno</button>
     </div>
     ${atrasadosCount>0 ? `<div class="banner noprint">⏰ <strong>${atrasadosCount} aluno(s)</strong> estão há mais de ${REAVAL_DIAS_LIMITE} dias sem reavaliação física (ou nunca avaliados). <span style="text-decoration:underline;cursor:pointer;" id="bannerVerAtrasados">Ver quem são</span></div>` : ''}
-    ${(()=>{ const b = backupStatus(); if(!b.atrasado) return ''; const msg = b.nunca ? 'Você ainda não exportou nenhum backup dos dados.' : `Já se passaram ${b.dias} dias desde o último backup exportado.`; return `<div class="banner noprint">💾 ${msg} <span style="text-decoration:underline;cursor:pointer;" id="bannerIrBackup">Ir para Backup</span></div>`; })()}
+    ${(()=>{ const b = backupStatus(); if(!b.atrasado) return ''; const msg = b.nunca ? 'Você ainda não exportou nenhum backup dos dados.' : `Já se passaram ${b.dias} dias desde o último backup exportado.`; return `<div class="banner danger noprint">💾 ${msg} <span style="text-decoration:underline;cursor:pointer;" id="bannerIrBackup">Ir para Backup</span></div>`; })()}
     ${(db.lixeiraAlunos||[]).length>0 ? `<div class="banner noprint">🗑️ <strong>${db.lixeiraAlunos.length} aluno(s)</strong> na lixeira, ainda podem ser restaurados. <span style="text-decoration:underline;cursor:pointer;" id="bannerVerLixeira">Ver lixeira</span></div>` : ''}
     <div class="card noprint" style="margin-bottom:16px;">
       <div class="field" style="margin-bottom:0;">
@@ -1853,12 +1857,15 @@ function renderStudentDetail(id){
           <button class="danger small" data-del-ficha="${f.id}">Excluir</button>
         </div>
       </div>
+      <div class="fichaTableWrap">
       <table>
         <thead><tr><th class="noprint">Feito</th><th>Exercício</th><th>Grupo</th><th>Séries</th><th>Reps</th><th>Carga</th><th>Descanso</th><th>Método</th><th class="noprint" style="white-space:nowrap;">Combo<span class="tip">?<span class="tiptext">Marque para indicar exercícios feitos em sequência, sem descanso entre eles (bi-set, conjugado, tri-set).</span></span></th><th title="Séries x Reps x Carga">Volume</th><th>Anotações</th></tr></thead>
         <tbody>
           ${linhasExercicios}
         </tbody>
       </table>
+      <div class="scrollHint noprint">→</div>
+      </div>
     </div>
   `;};
   const fichasHtml = fichasVisiveis.map(buildFichaCard).join('');
@@ -3601,6 +3608,7 @@ function renderLoginScreen(mensagem, emailPreenchido, tipoMensagem){
   const corMensagem = tipoMensagem==='sucesso' ? 'var(--green)' : 'var(--red)';
   document.getElementById('main').innerHTML = `
     <div style="max-width:360px;margin:80px auto;text-align:center;">
+      <img src="${appIconUrl()}" alt="" style="width:48px;height:48px;border-radius:12px;margin-bottom:12px;">
       <h2 style="margin-bottom:4px;">Fit<span style="color:var(--accent2);">Pro</span> Manager</h2>
       <div class="sub" style="margin-bottom:24px;">Entre com seu e-mail e senha para acessar seus dados, sincronizados entre todos os seus aparelhos.</div>
       <div class="card" style="text-align:left;">
