@@ -652,6 +652,11 @@ function renderFichaPrint(studentId, fichaId){
     return `<span class="backBtn noprint" id="backFromPrint">&larr; Voltar</span><div class="empty">Ficha não encontrada.</div>`;
   }
   const hoje = new Date().toISOString();
+  const linhasExerciciosPrint = f.exercicios.map((e,idxEx)=>{
+    const anteriorEx = f.exercicios[idxEx-1];
+    const destacadoEx = e.encadeado || (anteriorEx && anteriorEx.encadeado);
+    return `<tr style="${destacadoEx?'background:var(--panel2);border-left:3px solid var(--accent);':''}"><td>☐</td><td>${escapeHtml(e.nome)}${e.encadeado?' 🔗':''}</td><td>${escapeHtml(e.grupo||'-')}</td><td>${escapeHtml(e.series||'-')}</td><td>${escapeHtml(e.reps||'-')}</td><td>${escapeHtml(e.obs||'-')}</td><td>${escapeHtml(e.descanso||'-')}</td><td>${escapeHtml(e.metodo||'-')}</td><td>${formatVolume(calcularVolumeExercicio(e))}</td></tr>`;
+  }).join('');
   return `
     <span class="backBtn noprint" id="backFromPrint">&larr; Voltar para o aluno</span>
     <div class="row noprint" style="margin-bottom:16px;">
@@ -663,7 +668,7 @@ function renderFichaPrint(studentId, fichaId){
       <table>
         <thead><tr><th style="width:30px;"></th><th>Exercício</th><th>Grupo</th><th>Séries</th><th>Reps</th><th>Carga</th><th>Descanso</th><th>Método</th><th>Volume</th></tr></thead>
         <tbody>
-          ${f.exercicios.map(e=>`<tr><td>☐</td><td>${escapeHtml(e.nome)}</td><td>${escapeHtml(e.grupo||'-')}</td><td>${escapeHtml(e.series||'-')}</td><td>${escapeHtml(e.reps||'-')}</td><td>${escapeHtml(e.obs||'-')}</td><td>${escapeHtml(e.descanso||'-')}</td><td>${escapeHtml(e.metodo||'-')}</td><td>${formatVolume(calcularVolumeExercicio(e))}</td></tr>`).join('')}
+          ${linhasExerciciosPrint}
         </tbody>
       </table>
       <div class="meta" style="margin-top:10px;font-weight:600;">🏋️ Volume total do treino: ${formatVolume(volumeTotalFicha(f))}kg</div>
@@ -1729,6 +1734,26 @@ function renderStudentDetail(id){
     const total = f.exercicios.length;
     const feitos = f.exercicios.filter(e=>e.feito).length;
     const ehFichaDeHoje = f.id === fichaIdHoje;
+    const linhasExercicios = f.exercicios.map((e,idxEx)=>{
+      const anteriorEx = f.exercicios[idxEx-1];
+      const destacadoEx = e.encadeado || (anteriorEx && anteriorEx.encadeado);
+      return `<tr style="${destacadoEx?'background:var(--panel2);border-left:3px solid var(--accent);':''}">
+            <td class="noprint"><input type="checkbox" data-toggle-exec="${f.id}|${e.id}" ${e.feito?'checked':''} style="width:18px;height:18px;cursor:pointer;"></td>
+            <td style="${e.feito?'text-decoration:line-through;color:var(--muted);':''}">${escapeHtml(e.nome)} ${e.video?`<a href="${escapeAttr(e.video)}" target="_blank" rel="noopener" class="noprint" title="Ver vídeo de execução" style="text-decoration:none;">🎥</a>`:''}</td>
+            <td>${escapeHtml(e.grupo||'-')}</td>
+            <td><input class="inlineEdit noprint-border" data-field-exec="${f.id}|${e.id}|series" value="${escapeAttr(e.series||'')}" placeholder="-"></td>
+            <td><input class="inlineEdit noprint-border" data-field-exec="${f.id}|${e.id}|reps" value="${escapeAttr(e.reps||'')}" placeholder="-"></td>
+            <td><input class="inlineEdit noprint-border" data-field-exec="${f.id}|${e.id}|obs" value="${escapeAttr(e.obs||'')}" placeholder="-"></td>
+            <td><input class="inlineEdit noprint-border" data-field-exec="${f.id}|${e.id}|descanso" value="${escapeAttr(e.descanso||'')}" placeholder="Ex: 60s"></td>
+            <td><input class="inlineEdit noprint-border" data-field-exec="${f.id}|${e.id}|metodo" value="${escapeAttr(e.metodo||'')}" placeholder="Ex: Bi-set"></td>
+            <td class="noprint"><input type="checkbox" data-toggle-encadeado="${f.id}|${e.id}" ${e.encadeado?'checked':''} title="Encadear com o próximo (sem descanso)" style="width:18px;height:18px;cursor:pointer;"></td>
+            <td id="vol-${f.id}-${e.id}" style="color:var(--muted);">${formatVolume(calcularVolumeExercicio(e))}</td>
+            <td>
+              <button type="button" class="secondary small noprint" data-open-note="${f.id}|${e.id}" style="${e.notas?'border-color:var(--yellow);color:var(--yellow);':''}">${e.notas?'📝 Ver observação':'📝 Observação'}</button>
+              <span class="onlyPrint">${escapeHtml(e.notas||'-')}</span>
+            </td>
+          </tr>`;
+    }).join('');
     return `
     <div class="card" style="${ehFichaDeHoje?'border-color:var(--accent);':''}">
       <div class="fichaHeader">
@@ -1756,23 +1781,9 @@ function renderStudentDetail(id){
         </div>
       </div>
       <table>
-        <thead><tr><th class="noprint">Feito</th><th>Exercício</th><th>Grupo</th><th>Séries</th><th>Reps</th><th>Carga</th><th>Descanso</th><th>Método</th><th title="Séries x Reps x Carga">Volume</th><th>Anotações</th></tr></thead>
+        <thead><tr><th class="noprint">Feito</th><th>Exercício</th><th>Grupo</th><th>Séries</th><th>Reps</th><th>Carga</th><th>Descanso</th><th>Método</th><th class="noprint" title="Encadear com o próximo, sem descanso">🔗</th><th title="Séries x Reps x Carga">Volume</th><th>Anotações</th></tr></thead>
         <tbody>
-          ${f.exercicios.map(e=>`<tr>
-            <td class="noprint"><input type="checkbox" data-toggle-exec="${f.id}|${e.id}" ${e.feito?'checked':''} style="width:18px;height:18px;cursor:pointer;"></td>
-            <td style="${e.feito?'text-decoration:line-through;color:var(--muted);':''}">${escapeHtml(e.nome)} ${e.video?`<a href="${escapeAttr(e.video)}" target="_blank" rel="noopener" class="noprint" title="Ver vídeo de execução" style="text-decoration:none;">🎥</a>`:''}</td>
-            <td>${escapeHtml(e.grupo||'-')}</td>
-            <td><input class="inlineEdit noprint-border" data-field-exec="${f.id}|${e.id}|series" value="${escapeAttr(e.series||'')}" placeholder="-"></td>
-            <td><input class="inlineEdit noprint-border" data-field-exec="${f.id}|${e.id}|reps" value="${escapeAttr(e.reps||'')}" placeholder="-"></td>
-            <td><input class="inlineEdit noprint-border" data-field-exec="${f.id}|${e.id}|obs" value="${escapeAttr(e.obs||'')}" placeholder="-"></td>
-            <td><input class="inlineEdit noprint-border" data-field-exec="${f.id}|${e.id}|descanso" value="${escapeAttr(e.descanso||'')}" placeholder="Ex: 60s"></td>
-            <td><input class="inlineEdit noprint-border" data-field-exec="${f.id}|${e.id}|metodo" value="${escapeAttr(e.metodo||'')}" placeholder="Ex: Bi-set"></td>
-            <td id="vol-${f.id}-${e.id}" style="color:var(--muted);">${formatVolume(calcularVolumeExercicio(e))}</td>
-            <td>
-              <button type="button" class="secondary small noprint" data-open-note="${f.id}|${e.id}" style="${e.notas?'border-color:var(--yellow);color:var(--yellow);':''}">${e.notas?'📝 Ver observação':'📝 Observação'}</button>
-              <span class="onlyPrint">${escapeHtml(e.notas||'-')}</span>
-            </td>
-          </tr>`).join('')}
+          ${linhasExercicios}
         </tbody>
       </table>
     </div>
@@ -2327,6 +2338,16 @@ function bindEvents(){
       const f = s.fichas.find(x=>x.id===fichaId);
       const ex = f.exercicios.find(x=>x.id===execId);
       ex.feito = !ex.feito;
+      saveDB(); render();
+    };
+  });
+  document.querySelectorAll('[data-toggle-encadeado]').forEach(el=>{
+    el.onclick = ()=>{
+      const [fichaId, execId] = el.dataset.toggleEncadeado.split('|');
+      const s = db.students.find(x=>x.id===state.studentId);
+      const f = s.fichas.find(x=>x.id===fichaId);
+      const ex = f.exercicios.find(x=>x.id===execId);
+      ex.encadeado = !ex.encadeado;
       saveDB(); render();
     };
   });
@@ -3265,6 +3286,7 @@ function openFichaModal(ficha){
           <div class="miniField"><label>Descanso</label><input class="rDescanso" placeholder="Ex: 60s" value="${escapeAttr(e.descanso||'')}"></div>
           <div class="miniField"><label>Método</label><input class="rMetodo" placeholder="Ex: Bi-set, conjugado" value="${escapeAttr(e.metodo||'')}"></div>
           <div class="miniField"><label>Anotações</label><input class="rNotas" placeholder="dor, dificuldade..." value="${escapeAttr(e.notas||'')}"></div>
+          <div class="miniField"><label>&nbsp;</label><label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);cursor:pointer;font-weight:400;"><input type="checkbox" class="rEncadeado" ${e.encadeado?'checked':''} style="width:16px;height:16px;">🔗 Encadear c/ próximo</label></div>
         </div>
         <input class="rGrupo" style="display:none" value="${escapeAttr(e.grupo||'')}">
         <input class="rVideo" style="display:none" value="${escapeAttr(e.video||'')}">
@@ -3324,7 +3346,7 @@ function openFichaModal(ficha){
   bindRowRemovals();
 
   document.getElementById('fAddRow').onclick = ()=>{
-    workingList.push({nome:'',grupo:'',series:'',reps:'',obs:'',video:'',notas:'',descanso:'',metodo:''});
+    workingList.push({nome:'',grupo:'',series:'',reps:'',obs:'',video:'',notas:'',descanso:'',metodo:'',encadeado:false});
     refreshRows();
   };
 
@@ -3337,7 +3359,7 @@ function openFichaModal(ficha){
       workingList.length = 0;
       template.exercicios.forEach(nome=>{
         const ex = db.exercises.find(e=>e.nome===nome);
-        workingList.push({nome, grupo: ex?ex.grupo:'', series:'', reps:'', obs:'', video: ex&&ex.video?ex.video:'', notas:'', descanso:'', metodo:''});
+        workingList.push({nome, grupo: ex?ex.grupo:'', series:'', reps:'', obs:'', video: ex&&ex.video?ex.video:'', notas:'', descanso:'', metodo:'', encadeado:false});
       });
       refreshRows();
     };
@@ -3360,10 +3382,11 @@ function openFichaModal(ficha){
       workingList[i].descanso = row.querySelector('.rDescanso').value;
       workingList[i].metodo = row.querySelector('.rMetodo').value;
       workingList[i].notas = row.querySelector('.rNotas').value;
+      workingList[i].encadeado = row.querySelector('.rEncadeado').checked;
     });
     const cleaned = workingList.filter(e=>e.nome).map(e=>({
       id: e.id || uid(),
-      nome: e.nome, grupo: e.grupo||'', series: e.series||'', reps: e.reps||'', obs: e.obs||'', video: e.video||'', notas: e.notas||'', descanso: e.descanso||'', metodo: e.metodo||'',
+      nome: e.nome, grupo: e.grupo||'', series: e.series||'', reps: e.reps||'', obs: e.obs||'', video: e.video||'', notas: e.notas||'', descanso: e.descanso||'', metodo: e.metodo||'', encadeado: e.encadeado||false,
       feito: e.feito || false
     }));
     if(cleaned.length===0){ showToast('Adicione ao menos um exercício.', 'error'); return; }
