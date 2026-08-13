@@ -33,6 +33,9 @@
   h2{margin-top:0;font-size:22px;}
   .sub{color:var(--muted);font-size:13px;margin-top:-8px;margin-bottom:20px;}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:16px;}
+  .printBrand{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+  .printBrandMark{width:26px;height:26px;border-radius:7px;background:var(--accent);flex-shrink:0;}
+  .printBrandName{font-size:13px;font-weight:600;color:var(--accent);letter-spacing:.3px;}
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
   input,select,textarea{background:var(--panel2);border:1px solid var(--line);color:var(--text);padding:9px 11px;border-radius:7px;font-size:14px;}
   input:focus,select:focus,textarea:focus{outline:1px solid var(--accent);}
@@ -217,11 +220,18 @@
 
   @media print{
     nav, .noprint, .toastContainer, .syncWarningBanner{display:none !important;}
-    body{background:#fff;color:#000;}
+    body{background:#fff;color:#18181b;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
     main{padding:0;max-width:100%;}
-    .card{border:1px solid #ccc;background:#fff;}
-    th, td{color:#000;border-color:#ccc;}
-    .inlineEdit{border:none !important;background:transparent !important;color:#000 !important;padding:0;}
+    .card{border:1px solid #e2e2e8;background:#fff;box-shadow:none;border-radius:10px;padding:22px 24px;}
+    .printBrand{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+    .printBrandMark{width:26px;height:26px;border-radius:7px;background:#6e2de7;flex-shrink:0;}
+    .printBrandName{font-size:13px;font-weight:600;color:#6e2de7;letter-spacing:.3px;}
+    table{border-collapse:collapse;}
+    th{background:#f0eef7;color:#3c3489;font-weight:600;font-size:11px;text-transform:uppercase;padding:9px 8px;border-bottom:none;}
+    th:first-child{border-top-left-radius:7px;border-bottom-left-radius:7px;}
+    th:last-child{border-top-right-radius:7px;border-bottom-right-radius:7px;}
+    td{color:#18181b;border-color:#eeeef2;padding:9px 8px;}
+    .inlineEdit{border:none !important;background:transparent !important;color:#18181b !important;padding:0;}
     .onlyPrint{display:block !important;}
   }
 </style>
@@ -663,6 +673,7 @@ function renderFichaPrint(studentId, fichaId){
       <button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
     </div>
     <div class="card" style="max-width:760px;">
+      <div class="printBrand"><div class="printBrandMark"></div><div class="printBrandName">FITPRO MANAGER</div></div>
       <h2 style="margin-bottom:2px;">${escapeHtml(s.nome)}</h2>
       <div class="sub">${escapeHtml(f.nome || ('Treino '+f.letra))} • Treino ${escapeHtml(f.letra)}${s.objetivo?(' • '+escapeHtml(s.objetivo)):''}${s.nivel?(' • '+escapeHtml(s.nivel)):''}</div>
       <table>
@@ -690,8 +701,9 @@ function renderReciboPrint(studentId, registroId){
       <button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
     </div>
     <div class="card" style="max-width:560px;">
+      <div class="printBrand"><div class="printBrandMark"></div><div class="printBrandName">FITPRO MANAGER</div></div>
       <h2 style="margin-bottom:2px;">Recibo de Pagamento</h2>
-      <div class="sub">FitPro Manager</div>
+      <div class="sub">${escapeHtml(s.nome)}</div>
       <table>
         <tbody>
           <tr><td style="color:var(--muted);width:170px;">Aluno</td><td style="font-weight:600;">${escapeHtml(s.nome)}</td></tr>
@@ -724,6 +736,7 @@ function renderAvaliacaoPrint(studentId, avaliacaoId){
       <button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
     </div>
     <div class="card" style="max-width:560px;">
+      <div class="printBrand"><div class="printBrandMark"></div><div class="printBrandName">FITPRO MANAGER</div></div>
       <h2 style="margin-bottom:2px;">${escapeHtml(s.nome)}</h2>
       <div class="sub">Avaliação Física • ${formatDate(av.data)}${s.objetivo?(' • '+escapeHtml(s.objetivo)):''}${s.nivel?(' • '+escapeHtml(s.nivel)):''}</div>
       <table>
