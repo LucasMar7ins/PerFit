@@ -523,6 +523,9 @@ function appIconUrl(){
   return l ? l.href : '';
 }
 let state = { tab:'alunos', studentId:null, chartMetric:'peso', studentFilter:'ativos', collapsedSections: { anamnese:true, evolucao:true, avaliacoes:true, fichas:false, cargas:false }, agendaView:null, agendaRef:null, printRecibo:null, printAvaliacao:null, treinoAoVivo:null, exerciseCollapsedGroups:{}, planejamentoSemanasQtd:3, planejamentoExpandido:null };
+// Precisa existir também aqui (além do bloco que fala com o Firebase) porque são dois
+// blocos de código separados (script normal x script "module") e não compartilham variáveis.
+const ADMIN_EMAIL = 'lucaspsneves1@gmail.com';
 
 // ---------- REAVALIAÇÃO (lembrete) ----------
 const REAVAL_DIAS_LIMITE = 45; // ~6-7 semanas sem atualizar medidas
