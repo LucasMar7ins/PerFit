@@ -773,6 +773,28 @@ function renderTreinoAoVivo(studentId, fichaId){
   const total = f.exercicios.length;
   const feitos = f.exercicios.filter(e=>e.feito).length;
   const pct = total>0 ? Math.round((feitos/total)*100) : 0;
+  const liveCardsHtml = f.exercicios.map((e,idxEx)=>{
+    const anteriorEx = f.exercicios[idxEx-1];
+    const destacadoEx = e.encadeado || (anteriorEx && anteriorEx.encadeado);
+    return `
+        <div class="liveCard ${e.feito?'liveCardFeito':''}" style="${destacadoEx?'background:var(--panel2);border-left:3px solid var(--accent);':''}">
+          <div class="liveCardTop">
+            <div>
+              <div class="liveExNome">${escapeHtml(e.nome)}${e.encadeado?' 🔗':''}</div>
+              <div class="liveExGrupo">${escapeHtml(e.grupo||'-')}${e.metodo?(' • '+escapeHtml(e.metodo)):''}${e.video?` • <a href="${escapeAttr(e.video)}" target="_blank" rel="noopener">🎥 Vídeo</a>`:''}</div>
+            </div>
+            <button class="liveCheckBtn ${e.feito?'liveCheckBtnOn':''}" data-live-toggle="${f.id}|${e.id}" title="Marcar como feito">${e.feito?'✅':'○'}</button>
+          </div>
+          <div class="liveFieldsRow">
+            <div class="liveField"><label>Séries</label><input class="liveInput" data-live-field="${f.id}|${e.id}|series" value="${escapeAttr(e.series||'')}" placeholder="-"></div>
+            <div class="liveField"><label>Reps</label><input class="liveInput" data-live-field="${f.id}|${e.id}|reps" value="${escapeAttr(e.reps||'')}" placeholder="-"></div>
+            <div class="liveField"><label>Carga</label><input class="liveInput" data-live-field="${f.id}|${e.id}|obs" value="${escapeAttr(e.obs||'')}" placeholder="-"></div>
+            <div class="liveField"><label>Descanso</label><input class="liveInput" data-live-field="${f.id}|${e.id}|descanso" value="${escapeAttr(e.descanso||'')}" placeholder="-"></div>
+          </div>
+          <button class="ghost small" data-open-note="${f.id}|${e.id}" style="${e.notas?'border-color:var(--yellow);color:var(--yellow);':''}">${e.notas?'📝 Ver observação':'📝 Observação'}</button>
+        </div>
+      `;
+  }).join('');
   return `
     <div class="liveHeader">
       <div>
@@ -786,24 +808,7 @@ function renderTreinoAoVivo(studentId, fichaId){
       <div class="liveProgressLabel">${feitos} de ${total} concluído(s)</div>
     </div>
     <div class="liveList">
-      ${f.exercicios.map(e=>`
-        <div class="liveCard ${e.feito?'liveCardFeito':''}">
-          <div class="liveCardTop">
-            <div>
-              <div class="liveExNome">${escapeHtml(e.nome)}</div>
-              <div class="liveExGrupo">${escapeHtml(e.grupo||'-')}${e.video?` • <a href="${escapeAttr(e.video)}" target="_blank" rel="noopener">🎥 Vídeo</a>`:''}</div>
-            </div>
-            <button class="liveCheckBtn ${e.feito?'liveCheckBtnOn':''}" data-live-toggle="${f.id}|${e.id}" title="Marcar como feito">${e.feito?'✅':'○'}</button>
-          </div>
-          <div class="liveFieldsRow">
-            <div class="liveField"><label>Séries</label><input class="liveInput" data-live-field="${f.id}|${e.id}|series" value="${escapeAttr(e.series||'')}" placeholder="-"></div>
-            <div class="liveField"><label>Reps</label><input class="liveInput" data-live-field="${f.id}|${e.id}|reps" value="${escapeAttr(e.reps||'')}" placeholder="-"></div>
-            <div class="liveField"><label>Carga</label><input class="liveInput" data-live-field="${f.id}|${e.id}|obs" value="${escapeAttr(e.obs||'')}" placeholder="-"></div>
-            <div class="liveField"><label>Descanso</label><input class="liveInput" data-live-field="${f.id}|${e.id}|descanso" value="${escapeAttr(e.descanso||'')}" placeholder="-"></div>
-          </div>
-          <button class="ghost small" data-open-note="${f.id}|${e.id}" style="${e.notas?'border-color:var(--yellow);color:var(--yellow);':''}">${e.notas?'📝 Ver observação':'📝 Observação'}</button>
-        </div>
-      `).join('')}
+      ${liveCardsHtml}
     </div>
   `;
 }
