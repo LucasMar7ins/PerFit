@@ -126,11 +126,18 @@
   .compareCol{flex:1;min-width:0;}
   .compareCol table{font-size:13px;}
   .empty{color:var(--muted);text-align:center;padding:30px;font-size:14px;}
+  .emptyState{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:32px 20px;text-align:center;}
+  .emptyStateIcon{width:44px;height:44px;border-radius:50%;background:var(--panel2);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;color:var(--accent);font-size:20px;font-weight:600;}
+  .emptyStateTitle{font-weight:600;color:var(--text);font-size:15px;margin-bottom:4px;}
+  .emptyStateText{font-size:13px;color:var(--muted);margin-bottom:16px;max-width:320px;margin-left:auto;margin-right:auto;}
   .studentList{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;}
-  .studentCard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;cursor:pointer;transition:.15s;}
+  .studentCard{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:10px;padding:16px;cursor:pointer;transition:.15s;}
   .studentCard:hover{border-color:var(--accent);}
-  .studentCard h3{margin:0 0 4px;font-size:16px;}
+  .studentCard h3{margin:0 0 4px;font-size:16px;font-weight:600;}
   .studentCard .meta{color:var(--muted);font-size:12px;}
+  .savingIndicator{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);}
+  .savingSpin{width:10px;height:10px;border-radius:50%;border:2px solid var(--accent);border-top-color:transparent;display:inline-block;animation:girarSalvando .7s linear infinite;}
+  @keyframes girarSalvando{to{transform:rotate(360deg);}}
   .fichaHeader{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
   .fichaTag{width:34px;height:34px;border-radius:8px;background:var(--accent2);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;}
   .exRow{border:1px solid var(--line);border-radius:9px;padding:12px;margin-bottom:10px;background:var(--panel2);}
@@ -176,6 +183,10 @@
   .toastContainer{position:fixed;top:16px;right:16px;z-index:200;display:flex;flex-direction:column;gap:8px;max-width:320px;}
   .syncWarningBanner{position:fixed;top:0;left:0;right:0;z-index:300;background:var(--yellow);color:#1a1a1a;text-align:center;font-size:13px;font-weight:600;padding:9px 14px;display:none;}
   .syncWarningBanner.show{display:block;}
+  .savePill{position:fixed;bottom:16px;right:16px;z-index:250;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:7px 14px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:7px;box-shadow:0 2px 10px rgba(0,0,0,.1);opacity:0;transform:translateY(8px);transition:opacity .2s,transform .2s;pointer-events:none;}
+  .savePill.show{opacity:1;transform:translateY(0);}
+  .savePill.ok{color:var(--green);border-color:var(--green);}
+  .savePillCheck{color:var(--green);font-weight:700;}
   .toast{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);color:var(--text);padding:12px 14px;border-radius:8px;font-size:13px;box-shadow:0 6px 18px rgba(0,0,0,.35);opacity:0;transform:translateX(24px);transition:opacity .25s ease,transform .25s ease;}
   .toast.show{opacity:1;transform:translateX(0);}
   .toast.toast-success{border-left-color:var(--green);}
@@ -223,7 +234,7 @@
   }
 
   @media print{
-    nav, .noprint, .toastContainer, .syncWarningBanner{display:none !important;}
+    nav, .noprint, .toastContainer, .syncWarningBanner, .savePill{display:none !important;}
     body{background:#fff;color:#18181b;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
     main{padding:0;max-width:100%;}
     .card{border:1px solid #e2e2e8;background:#fff;box-shadow:none;border-radius:10px;padding:22px 24px;}
@@ -261,6 +272,7 @@
 </div>
 <div class="toastContainer" id="toastContainer"></div>
 <div class="syncWarningBanner noprint" id="syncWarning">⚠️ Sem conexão com a nuvem — suas alterações estão sendo salvas só neste aparelho até a internet voltar.</div>
+<div class="savePill noprint" id="savePill"><span class="savingSpin" style="display:inline-block;"></span><span class="savePillCheck" style="display:none;">✓</span><span class="savePillText">Salvando...</span></div>
 
 <script>
 // ---------- DATA LAYER ----------
@@ -457,9 +469,41 @@ function loadDB(){
   }
   return data;
 }
+let savePillTimeout = null;
+function savePillEls(){
+  const el = document.getElementById('savePill');
+  if(!el) return null;
+  return { el, spin: el.querySelector('.savingSpin'), check: el.querySelector('.savePillCheck'), text: el.querySelector('.savePillText') };
+}
+function showSavingPill(){
+  const p = savePillEls();
+  if(!p) return;
+  clearTimeout(savePillTimeout);
+  p.el.classList.remove('ok');
+  p.spin.style.display = 'inline-block';
+  p.check.style.display = 'none';
+  p.text.textContent = 'Salvando...';
+  p.el.classList.add('show');
+}
+function showSavedPill(mensagem){
+  const p = savePillEls();
+  if(!p) return;
+  p.el.classList.add('ok');
+  p.spin.style.display = 'none';
+  p.check.style.display = 'inline';
+  p.text.textContent = mensagem;
+  clearTimeout(savePillTimeout);
+  savePillTimeout = setTimeout(()=> p.el.classList.remove('show'), 1800);
+}
 function saveDB(){
   localStorage.setItem(DB_KEY, JSON.stringify(db));
-  if(window.__cloudSave && currentUid){ window.__cloudSave(currentUid, db); }
+  if(window.__cloudSave && currentUid){
+    showSavingPill();
+    const p = window.__cloudSave(currentUid, db);
+    if(p && p.then) p.then(()=> showSavedPill('Sincronizado'));
+  } else {
+    showSavedPill('Salvo');
+  }
 }
 function uid(){ return Math.random().toString(36).slice(2,10); }
 
@@ -835,6 +879,9 @@ function renderTreinoAoVivo(studentId, fichaId){
 }
 
 // ---------- STUDENTS LIST ----------
+function emptyStudentsHtml(){
+  return `<div class="emptyState"><div class="emptyStateIcon">+</div><div class="emptyStateTitle">Nenhum aluno ainda</div><div class="emptyStateText">Cadastre seu primeiro aluno para começar a montar fichas de treino.</div><button id="btnEmptyAddStudent">Cadastrar aluno</button></div>`;
+}
 function studentCardHtml(s){
   const status = s.status || 'ativo';
   const reaval = reavaliacaoStatus(s);
@@ -873,7 +920,7 @@ function renderStudentCards(){
   const filtered = filteredStudents();
   const list = document.getElementById('studentListBody');
   if(!list) return;
-  list.innerHTML = filtered.map(studentCardHtml).join('') || '<div class="empty">Nenhum aluno encontrado.</div>';
+  list.innerHTML = filtered.map(studentCardHtml).join('') || (db.students.length===0 ? emptyStudentsHtml() : '<div class="empty">Nenhum aluno encontrado com esse filtro.</div>');
   const countLabel = document.getElementById('studentCountLabel');
   if(countLabel) countLabel.textContent = `${filtered.length} de ${db.students.length} aluno(s)`;
   bindStudentCardEvents();
@@ -910,7 +957,7 @@ function renderStudentsList(){
       <div class="meta" id="studentCountLabel" style="margin-top:10px;">${filteredStudents().length} de ${db.students.length} aluno(s)</div>
     </div>
     <div class="studentList" id="studentListBody">
-      ${cards || '<div class="empty">Nenhum aluno encontrado.</div>'}
+      ${cards || (db.students.length===0 ? emptyStudentsHtml() : '<div class="empty">Nenhum aluno encontrado com esse filtro.</div>')}
     </div>
   `;
 }
@@ -1880,7 +1927,7 @@ function renderStudentDetail(id){
       ${fichas.length>0 ? `<span class="tag gray" id="volTotalAluno" style="margin-left:auto;">🏋️ Volume total (todas as fichas): ${formatVolume(fichas.reduce((sum,f)=>sum+volumeTotalFicha(f),0))}kg</span>` : ''}
     </div>
     <div class="collapsibleContent" style="display:${state.collapsedSections.fichas?'none':'block'};">
-      ${fichasHtml || '<div class="empty">Nenhuma ficha ativa para este aluno. Crie uma nova ou veja as fichas arquivadas.</div>'}
+      ${fichasHtml || '<div class="emptyState"><div class="emptyStateIcon">+</div><div class="emptyStateTitle">Nenhuma ficha ativa</div><div class="emptyStateText">Crie a primeira ficha de treino para este aluno ou veja as fichas arquivadas.</div><button id="btnEmptyNewFicha">+ Nova ficha de treino</button></div>'}
     </div>
 
     <div class="sectionTitle">
@@ -2111,6 +2158,8 @@ function bindEvents(){
 
   const btnAddStudent = document.getElementById('btnAddStudent');
   if(btnAddStudent) btnAddStudent.onclick = ()=> openStudentModal();
+  const btnEmptyAddStudent = document.getElementById('btnEmptyAddStudent');
+  if(btnEmptyAddStudent) btnEmptyAddStudent.onclick = ()=> openStudentModal();
 
   const btnEditStudent = document.getElementById('btnEditStudent');
   if(btnEditStudent) btnEditStudent.onclick = ()=> openStudentModal(db.students.find(s=>s.id===state.studentId));
@@ -2199,6 +2248,8 @@ function bindEvents(){
 
   const btnNewFicha = document.getElementById('btnNewFicha');
   if(btnNewFicha) btnNewFicha.onclick = ()=> openFichaModal();
+  const btnEmptyNewFicha = document.getElementById('btnEmptyNewFicha');
+  if(btnEmptyNewFicha) btnEmptyNewFicha.onclick = ()=> openFichaModal();
 
   const btnFichasArquivadas = document.getElementById('btnFichasArquivadas');
   if(btnFichasArquivadas) btnFichasArquivadas.onclick = ()=> openFichasArquivadasModal(state.studentId);
