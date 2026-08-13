@@ -3725,7 +3725,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, serverTimestamp, collection, query, orderBy, limit, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCxC6Z4QSz3Za3wACBMlXUw_joYoYyAzAw",
@@ -3751,6 +3751,26 @@ let filaSalvamento = Promise.resolve();
 // dentro do próprio documento, checamos o tamanho ANTES de tentar salvar, pra avisar com uma mensagem
 // clara em vez de deixar a sincronização falhar silenciosamente sem o personal entender o motivo.
 const LIMITE_SEGURO_BYTES = 900000;
+// Backup automático: uma vez por dia, depois de salvar com sucesso, guardamos uma cópia
+// datada em usuarios/{uid}/backups/{AAAA-MM-DD}. Isso dá um ponto de restauração caso o
+// documento principal seja corrompido ou algo seja apagado sem querer — sem depender do
+// personal lembrar de exportar backup manual. Mantemos só os 7 mais recentes.
+async function fazerBackupDiarioSeNecessario(uid, payload, atualizadoEm){
+  try{
+    const hojeISO = new Date().toISOString().slice(0,10);
+    const chaveLocal = 'fitpro_ultimo_backup_' + uid;
+    if(localStorage.getItem(chaveLocal) === hojeISO) return;
+    await setDoc(doc(dbFire, 'usuarios', uid, 'backups', hojeISO), { payload, atualizadoEm });
+    localStorage.setItem(chaveLocal, hojeISO);
+    const backupsCol = collection(dbFire, 'usuarios', uid, 'backups');
+    const q = query(backupsCol, orderBy('atualizadoEm', 'desc'), limit(30));
+    const snap = await getDocs(q);
+    const antigos = snap.docs.slice(7);
+    for(const d of antigos){ await deleteDoc(d.ref); }
+  } catch(e){
+    console.error('Falha ao criar backup automático diário (não afeta o salvamento normal)', e);
+  }
+}
 window.__cloudSave = (uid, data) => {
   const payload = JSON.stringify(data);
   const atualizadoEm = new Date().toISOString();
@@ -3763,6 +3783,7 @@ window.__cloudSave = (uid, data) => {
     try {
       await setDoc(doc(dbFire, 'usuarios', uid), { payload, atualizadoEm });
       if(window.__hideSyncWarning) window.__hideSyncWarning();
+      fazerBackupDiarioSeNecessario(uid, payload, atualizadoEm);
     } catch(e){
       console.error('Erro ao salvar na nuvem', e);
       if(window.__showSyncWarning) window.__showSyncWarning();
