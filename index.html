@@ -50,6 +50,9 @@
   table{width:100%;border-collapse:collapse;font-size:14px;}
   th{text-align:left;color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;padding:8px;border-bottom:1px solid var(--line);}
   td{padding:9px 8px;border-bottom:1px solid var(--line);}
+  .tip{position:relative;display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:var(--line);color:var(--muted);font-size:10px;font-weight:700;cursor:help;margin-left:4px;vertical-align:middle;}
+  .tip .tiptext{visibility:hidden;opacity:0;transition:opacity .15s;position:absolute;bottom:20px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;text-align:left;padding:8px 10px;border-radius:6px;font-size:11px;font-weight:400;text-transform:none;width:190px;line-height:1.4;z-index:10;}
+  .tip:hover .tiptext,.tip:active .tiptext{visibility:visible;opacity:1;}
   tr:hover td{background:rgba(255,255,255,0.02);}
   .tag{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;}
   .tag.green{background:rgba(52,211,153,.15);color:var(--green);}
@@ -1800,7 +1803,7 @@ function renderStudentDetail(id){
         </div>
       </div>
       <table>
-        <thead><tr><th class="noprint">Feito</th><th>Exercício</th><th>Grupo</th><th>Séries</th><th>Reps</th><th>Carga</th><th>Descanso</th><th>Método</th><th class="noprint" title="Encadear com o próximo, sem descanso">🔗</th><th title="Séries x Reps x Carga">Volume</th><th>Anotações</th></tr></thead>
+        <thead><tr><th class="noprint">Feito</th><th>Exercício</th><th>Grupo</th><th>Séries</th><th>Reps</th><th>Carga</th><th>Descanso</th><th>Método</th><th class="noprint">Encadear 🔗<span class="tip">?<span class="tiptext">Marque para indicar exercícios feitos em sequência, sem descanso entre eles (bi-set, conjugado, tri-set).</span></span></th><th title="Séries x Reps x Carga">Volume</th><th>Anotações</th></tr></thead>
         <tbody>
           ${linhasExercicios}
         </tbody>
