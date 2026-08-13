@@ -689,6 +689,7 @@ function render(){
   const main = document.getElementById('main');
   const navEl = document.querySelector('nav');
   if(navEl) navEl.style.display = state.treinoAoVivo ? 'none' : '';
+  main.style.margin = '';
   if(state.printFicha){
     main.innerHTML = renderFichaPrint(state.printFicha.studentId, state.printFicha.fichaId);
   } else if(state.printRecibo){
@@ -3605,6 +3606,7 @@ function renderLoginScreen(mensagem, emailPreenchido, tipoMensagem){
   window.scrollTo(0,0);
   const navEl = document.querySelector('nav');
   if(navEl) navEl.style.display = 'none';
+  document.getElementById('main').style.margin = '0 auto';
   const corMensagem = tipoMensagem==='sucesso' ? 'var(--green)' : 'var(--red)';
   document.getElementById('main').innerHTML = `
     <div style="max-width:360px;margin:80px auto;text-align:center;">
@@ -3688,6 +3690,7 @@ window.__showTesteExpirado = function(){
   currentUid = null;
   const navEl = document.querySelector('nav');
   if(navEl) navEl.style.display = 'none';
+  document.getElementById('main').style.margin = '0 auto';
   document.getElementById('main').innerHTML = `
     <div style="max-width:360px;margin:80px auto;text-align:center;">
       <h2 style="margin-bottom:4px;">Fit<span style="color:var(--accent2);">Pro</span> Manager</h2>
