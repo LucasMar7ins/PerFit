@@ -2381,12 +2381,21 @@ function bindEvents(){
       const w = 190;
       let left = r.left + r.width/2 - w/2;
       left = Math.min(Math.max(8, left), window.innerWidth - w - 8);
-      let top = r.top - tt.offsetHeight - 8;
-      if(top < 8) top = r.bottom + 8;
+      const alturaEstim = tt.offsetHeight || 60;
+      let top = r.bottom + 8;
+      if(top + alturaEstim > window.innerHeight - 8){
+        top = r.top - alturaEstim - 8;
+      }
+      if(top < 8) top = 8;
       tt.style.left = left+'px';
       tt.style.top = top+'px';
     };
-    tip.onmouseenter = posiciona;
+    tip.onmouseenter = ()=>{
+      document.querySelectorAll('.tip.open').forEach(t=>t.classList.remove('open'));
+      posiciona();
+      tip.classList.add('open');
+    };
+    tip.onmouseleave = ()=> tip.classList.remove('open');
     tip.onclick = (e)=>{
       e.stopPropagation();
       const jaAberto = tip.classList.contains('open');
