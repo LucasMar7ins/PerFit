@@ -526,6 +526,7 @@ let state = { tab:'alunos', studentId:null, chartMetric:'peso', studentFilter:'a
 // Precisa existir também aqui (além do bloco que fala com o Firebase) porque são dois
 // blocos de código separados (script normal x script "module") e não compartilham variáveis.
 const ADMIN_EMAIL = 'lucaspsneves1@gmail.com';
+const LIMITE_SEGURO_BYTES_UI = 900000;
 
 // ---------- REAVALIAÇÃO (lembrete) ----------
 const REAVAL_DIAS_LIMITE = 45; // ~6-7 semanas sem atualizar medidas
@@ -728,6 +729,17 @@ function formatDataHora(iso){
   if(isNaN(d.getTime())) return '-';
   return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
 }
+function statusPlanoLabel(item){
+  if(item.statusPlano === 'pago') return '<span class="tag green">Pago</span>';
+  if(item.statusPlano === 'teste') return `<span class="tag yellow">Teste (${item.diasRestantes}d restante(s))</span>`;
+  if(item.statusPlano === 'expirado') return '<span class="tag red">Teste expirado</span>';
+  return '<span class="tag gray">-</span>';
+}
+function diasSemUso(item){
+  const ref = item.ultimaAtividade || item.ultimoLogin;
+  if(!ref) return null;
+  return Math.floor((Date.now() - new Date(ref).getTime()) / 86400000);
+}
 async function carregarPainelUso(){
   if(!window.__buscarPainelUso) return;
   try{
@@ -735,28 +747,56 @@ async function carregarPainelUso(){
     if(state.tab !== 'uso') return;
     const main = document.getElementById('main');
     if(!main) return;
+    const totalContas = lista.length;
+    const totalPagas = lista.filter(i=>i.statusPlano==='pago').length;
+    const totalTeste = lista.filter(i=>i.statusPlano==='teste').length;
+    const totalExpiradas = lista.filter(i=>i.statusPlano==='expirado').length;
     const linhas = lista.map(item=>{
       const totalMin = Math.round(item.minutosAcumulados || 0);
       const horas = Math.floor(totalMin / 60);
       const min = totalMin % 60;
       const qtdSessoes = (item.historico || []).length + (item.sessaoAtual ? 1 : 0);
+      const pctTamanho = Math.round((item.tamanhoBytes || 0) / LIMITE_SEGURO_BYTES_UI * 100);
+      const corTamanho = pctTamanho >= 80 ? 'var(--red)' : (pctTamanho >= 50 ? 'var(--yellow)' : 'var(--muted)');
+      const dias = diasSemUso(item);
+      const inativo = dias !== null && dias >= 14;
       return `<tr>
         <td>${escapeHtml(item.email || item.uid)}</td>
+        <td>${statusPlanoLabel(item)}</td>
         <td>${formatDataHora(item.ultimoLogin)}</td>
-        <td>${formatDataHora(item.ultimaAtividade)}</td>
-        <td>${horas}h ${min}min</td>
-        <td>${qtdSessoes} sessão(ões)</td>
+        <td>${formatDataHora(item.ultimaAtividade)} ${inativo ? `<span class="tag yellow">⚠️ ${dias}d sem uso</span>` : ''}</td>
+        <td>${horas}h ${min}min <span style="color:var(--muted);font-size:11px;">(${qtdSessoes} sessão(ões))</span></td>
+        <td style="color:${corTamanho};font-weight:600;">${pctTamanho}%</td>
       </tr>`;
     }).join('');
     main.innerHTML = `
       <h2>Uso por personal</h2>
-      <div class="sub">Login, última atividade e tempo total de uso de cada conta. Valores aproximados (atualizados a cada minuto de uso ativo).</div>
+      <div class="sub">Login, plano, última atividade e tempo de uso de cada conta. Valores aproximados.</div>
+      <div class="row" style="gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+        <div class="card" style="flex:1;min-width:120px;text-align:center;padding:14px;">
+          <div style="font-size:22px;font-weight:600;color:var(--text);">${totalContas}</div>
+          <div class="meta">Conta(s) total</div>
+        </div>
+        <div class="card" style="flex:1;min-width:120px;text-align:center;padding:14px;">
+          <div style="font-size:22px;font-weight:600;color:var(--green);">${totalPagas}</div>
+          <div class="meta">Paga(s)</div>
+        </div>
+        <div class="card" style="flex:1;min-width:120px;text-align:center;padding:14px;">
+          <div style="font-size:22px;font-weight:600;color:var(--yellow);">${totalTeste}</div>
+          <div class="meta">Em teste</div>
+        </div>
+        <div class="card" style="flex:1;min-width:120px;text-align:center;padding:14px;">
+          <div style="font-size:22px;font-weight:600;color:var(--red);">${totalExpiradas}</div>
+          <div class="meta">Teste expirado</div>
+        </div>
+      </div>
       <div class="card" style="overflow-x:auto;">
         <table>
-          <thead><tr><th>E-mail</th><th>Último login</th><th>Última atividade</th><th>Tempo total de uso</th><th>Sessões</th></tr></thead>
-          <tbody>${linhas || '<tr><td colspan="5" class="empty">Nenhum dado de uso ainda.</td></tr>'}</tbody>
+          <thead><tr><th>E-mail</th><th>Plano</th><th>Último login</th><th>Última atividade</th><th>Tempo total de uso</th><th title="% do limite de tamanho de dados">Dados</th></tr></thead>
+          <tbody>${linhas || '<tr><td colspan="6" class="empty">Nenhum dado de uso ainda.</td></tr>'}</tbody>
         </table>
       </div>
+      <div class="meta" style="margin-top:10px;">💡 Contas que nunca fizeram login não aparecem aqui — pra ver essas, confira a lista de usuários direto no Firebase Console (aba Authentication).</div>
     `;
   } catch(e){
     console.error('Erro ao carregar painel de uso', e);
@@ -3913,10 +3953,14 @@ function pararRastreamentoAtividade(){
 }
 window.__buscarPainelUso = async function(){
   if(!auth.currentUser || auth.currentUser.email !== ADMIN_EMAIL) return [];
-  const col = collection(dbFire, 'atividade');
-  const snap = await getDocs(col);
+  const [snapAtividade, snapLicencas] = await Promise.all([
+    getDocs(collection(dbFire, 'atividade')),
+    getDocs(collection(dbFire, 'licencas'))
+  ]);
+  const licencasPorUid = {};
+  snapLicencas.forEach(d=>{ licencasPorUid[d.id] = d.data(); });
   const lista = [];
-  snap.forEach(d=>{
+  snapAtividade.forEach(d=>{
     const dados = d.data();
     let minutosAcumulados = 0;
     (dados.historico || []).forEach(s=>{ minutosAcumulados += (s.minutos || 0); });
@@ -3925,12 +3969,28 @@ window.__buscarPainelUso = async function(){
       const fim = new Date(dados.sessaoAtual.ultimoPing).getTime();
       minutosAcumulados += Math.max(0, Math.round((fim - ini) / 60000));
     }
+    const lic = licencasPorUid[d.id] || null;
+    let statusPlano = 'desconhecido';
+    let diasRestantes = null;
+    if(lic){
+      if(lic.pago){
+        statusPlano = 'pago';
+      } else {
+        const inicio = (lic.testeIniciadoEm && lic.testeIniciadoEm.toDate) ? lic.testeIniciadoEm.toDate() : new Date();
+        const diasPassados = Math.floor((Date.now() - inicio.getTime()) / 86400000);
+        diasRestantes = DIAS_TESTE_GRATIS - diasPassados;
+        statusPlano = diasRestantes > 0 ? 'teste' : 'expirado';
+      }
+    }
     lista.push({
       uid: d.id,
       email: dados.email || d.id,
       ultimoLogin: dados.ultimoLogin || null,
       ultimaAtividade: dados.ultimaAtividade || null,
       minutosAcumulados,
+      tamanhoBytes: dados.tamanhoBytes || 0,
+      statusPlano,
+      diasRestantes,
       historico: dados.historico || [],
       sessaoAtual: dados.sessaoAtual || null
     });
@@ -3943,6 +4003,10 @@ window.__cloudSave = (uid, data) => {
   const payload = JSON.stringify(data);
   const atualizadoEm = new Date().toISOString();
   const tamanhoBytes = new Blob([payload]).size;
+  // Guarda o tamanho atual dos dados junto do registro de atividade, pra dar visibilidade
+  // no painel de uso (admin) sobre quem está chegando perto do limite — sem precisar ler
+  // o conteúdo real dos dados de ninguém, só o tamanho em bytes.
+  setDoc(doc(dbFire, 'atividade', uid), { tamanhoBytes }, { merge: true }).catch(()=>{});
   if(tamanhoBytes > LIMITE_SEGURO_BYTES){
     if(window.__showSyncWarning) window.__showSyncWarning('⚠️ Os dados ficaram grandes demais para sincronizar com a nuvem (muitas fotos ou anexos). Apague fotos ou anexos antigos para voltar a sincronizar — por enquanto, as alterações estão salvas só neste aparelho.');
     return Promise.resolve();
