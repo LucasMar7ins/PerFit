@@ -186,6 +186,9 @@
   .toastContainer{position:fixed;top:16px;right:16px;z-index:200;display:flex;flex-direction:column;gap:8px;max-width:320px;}
   .syncWarningBanner{position:fixed;top:0;left:0;right:0;z-index:300;background:var(--yellow);color:#1a1a1a;text-align:center;font-size:13px;font-weight:600;padding:9px 14px;display:none;}
   .syncWarningBanner.show{display:block;}
+  .conflitoAvisoBanner{position:fixed;top:0;left:0;right:0;z-index:301;background:var(--accent);color:#fff;text-align:center;font-size:13px;font-weight:600;padding:9px 14px;display:none;}
+  .conflitoAvisoBanner.show{display:block;}
+  .conflitoAvisoBanner button{background:#fff;color:var(--accent);margin-left:10px;padding:5px 12px;font-size:12px;}
   .savePill{position:fixed;bottom:16px;right:16px;z-index:250;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:7px 14px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:7px;box-shadow:0 2px 10px rgba(0,0,0,.1);opacity:0;transform:translateY(8px);transition:opacity .2s,transform .2s;pointer-events:none;}
   .savePill.show{opacity:1;transform:translateY(0);}
   .savePill.ok{color:var(--green);border-color:var(--green);}
@@ -238,7 +241,7 @@
   }
 
   @media print{
-    nav, .noprint, .toastContainer, .syncWarningBanner, .savePill{display:none !important;}
+    nav, .noprint, .toastContainer, .syncWarningBanner, .savePill, .conflitoAvisoBanner{display:none !important;}
     body{background:#fff;color:#18181b;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
     main{padding:0;max-width:100%;}
     .card{border:1px solid #e2e2e8;background:#fff;box-shadow:none;border-radius:10px;padding:22px 24px;}
@@ -276,6 +279,7 @@
 </div>
 <div class="toastContainer" id="toastContainer"></div>
 <div class="syncWarningBanner noprint" id="syncWarning">⚠️ Sem conexão com a nuvem — suas alterações estão sendo salvas só neste aparelho até a internet voltar.</div>
+<div class="conflitoAvisoBanner noprint" id="conflitoAviso">⚠️ Detectamos uma alteração feita em outro aparelho depois que você abriu este. Para não perder nada, recarregue a página.<button type="button" id="btnRecarregarConflito">Recarregar agora</button></div>
 <div class="savePill noprint" id="savePill"><span class="savingSpin" style="display:inline-block;"></span><span class="savePillCheck" style="display:none;">✓</span><span class="savePillText">Salvando...</span></div>
 
 <script>
@@ -3717,9 +3721,15 @@ window.__hideSyncWarning = function(){
   const el = document.getElementById('syncWarning');
   if(el) el.classList.remove('show');
 };
+window.__showConflitoAviso = function(){
+  const el = document.getElementById('conflitoAviso');
+  if(el) el.classList.add('show');
+};
 document.addEventListener('DOMContentLoaded', ()=>{
   const navSair = document.getElementById('navSair');
   if(navSair) navSair.onclick = ()=>{ if(window.__fbSignOut) window.__fbSignOut(); };
+  const btnRecarregarConflito = document.getElementById('btnRecarregarConflito');
+  if(btnRecarregarConflito) btnRecarregarConflito.onclick = ()=> window.location.reload();
 });
 </script>
 <script type="module">
@@ -3747,6 +3757,13 @@ window.__fbResetPassword = (email) => sendPasswordResetEmail(auth, email);
 // Fila de salvamentos: garante que cada salvamento na nuvem só comece depois do anterior terminar,
 // evitando que escritas concorrentes cheguem ao Firestore fora de ordem.
 let filaSalvamento = Promise.resolve();
+// Detecção de conflito entre aparelhos: guardamos o "atualizadoEm" mais recente que ESTE
+// aparelho conhece. Se, na hora de salvar, o documento na nuvem tiver um "atualizadoEm"
+// diferente do que conhecemos, é sinal de que outro aparelho salvou algo nesse meio tempo —
+// avisamos uma vez por sessão pra evitar sobrescrever sem o personal perceber.
+let ultimoAtualizadoEmConhecido = null;
+let avisoConflitoMostrado = false;
+window.__setUltimoAtualizadoEm = (valor) => { ultimoAtualizadoEmConhecido = valor; };
 // O Firestore recusa documentos acima de 1.048.576 bytes (1MB). Como fotos e anexos ficam guardados
 // dentro do próprio documento, checamos o tamanho ANTES de tentar salvar, pra avisar com uma mensagem
 // clara em vez de deixar a sincronização falhar silenciosamente sem o personal entender o motivo.
@@ -3781,7 +3798,17 @@ window.__cloudSave = (uid, data) => {
   }
   filaSalvamento = filaSalvamento.then(async () => {
     try {
+      if(ultimoAtualizadoEmConhecido && !avisoConflitoMostrado){
+        try {
+          const snapAtual = await getDoc(doc(dbFire, 'usuarios', uid));
+          if(snapAtual.exists() && snapAtual.data().atualizadoEm && snapAtual.data().atualizadoEm !== ultimoAtualizadoEmConhecido){
+            avisoConflitoMostrado = true;
+            if(window.__showConflitoAviso) window.__showConflitoAviso();
+          }
+        } catch(eChecagem){ /* checagem de conflito falhou — segue com o salvamento normalmente */ }
+      }
       await setDoc(doc(dbFire, 'usuarios', uid), { payload, atualizadoEm });
+      ultimoAtualizadoEmConhecido = atualizadoEm;
       if(window.__hideSyncWarning) window.__hideSyncWarning();
       fazerBackupDiarioSeNecessario(uid, payload, atualizadoEm);
     } catch(e){
@@ -3837,6 +3864,7 @@ onAuthStateChanged(auth, async (user) => {
       const snap = await getDoc(doc(dbFire, 'usuarios', user.uid));
       if(snap.exists() && snap.data().payload){
         cloudData = JSON.parse(snap.data().payload);
+        if(window.__setUltimoAtualizadoEm) window.__setUltimoAtualizadoEm(snap.data().atualizadoEm || null);
       }
     } catch(e){
       console.error('Erro ao carregar dados da nuvem', e);
