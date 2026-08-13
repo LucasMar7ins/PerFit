@@ -34,7 +34,7 @@
   .sub{color:var(--muted);font-size:13px;margin-top:-8px;margin-bottom:20px;}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:16px;}
   .printBrand{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
-  .printBrandMark{width:26px;height:26px;border-radius:7px;background:var(--accent);flex-shrink:0;}
+  .printBrandMark{width:26px;height:26px;border-radius:7px;flex-shrink:0;object-fit:contain;}
   .printBrandName{font-size:13px;font-weight:600;color:var(--accent);letter-spacing:.3px;}
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
   input,select,textarea{background:var(--panel2);border:1px solid var(--line);color:var(--text);padding:9px 11px;border-radius:7px;font-size:14px;}
@@ -228,7 +228,7 @@
     main{padding:0;max-width:100%;}
     .card{border:1px solid #e2e2e8;background:#fff;box-shadow:none;border-radius:10px;padding:22px 24px;}
     .printBrand{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
-    .printBrandMark{width:26px;height:26px;border-radius:7px;background:#6e2de7;flex-shrink:0;}
+    .printBrandMark{width:26px;height:26px;border-radius:7px;flex-shrink:0;object-fit:contain;}
     .printBrandName{font-size:13px;font-weight:600;color:#6e2de7;letter-spacing:.3px;}
     table{border-collapse:collapse;}
     th{background:#f0eef7;color:#3c3489;font-weight:600;font-size:11px;text-transform:uppercase;padding:9px 8px;border-bottom:none;}
@@ -465,6 +465,10 @@ function uid(){ return Math.random().toString(36).slice(2,10); }
 
 let db = loadDB();
 let currentUid = null;
+function appIconUrl(){
+  const l = document.querySelector('link[rel="apple-touch-icon"]');
+  return l ? l.href : '';
+}
 let state = { tab:'alunos', studentId:null, chartMetric:'peso', studentFilter:'ativos', collapsedSections: { anamnese:true, evolucao:true, avaliacoes:true, fichas:false, cargas:false }, agendaView:null, agendaRef:null, printRecibo:null, printAvaliacao:null, treinoAoVivo:null, exerciseCollapsedGroups:{}, planejamentoSemanasQtd:3, planejamentoExpandido:null };
 
 // ---------- REAVALIAÇÃO (lembrete) ----------
@@ -677,7 +681,7 @@ function renderFichaPrint(studentId, fichaId){
       <button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
     </div>
     <div class="card" style="max-width:760px;">
-      <div class="printBrand"><div class="printBrandMark"></div><div class="printBrandName">FITPRO MANAGER</div></div>
+      <div class="printBrand"><img class="printBrandMark" src="${appIconUrl()}" alt=""><div class="printBrandName">FITPRO MANAGER</div></div>
       <h2 style="margin-bottom:2px;">${escapeHtml(s.nome)}</h2>
       <div class="sub">${escapeHtml(f.nome || ('Treino '+f.letra))} • Treino ${escapeHtml(f.letra)}${s.objetivo?(' • '+escapeHtml(s.objetivo)):''}${s.nivel?(' • '+escapeHtml(s.nivel)):''}</div>
       <table>
@@ -705,7 +709,7 @@ function renderReciboPrint(studentId, registroId){
       <button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
     </div>
     <div class="card" style="max-width:560px;">
-      <div class="printBrand"><div class="printBrandMark"></div><div class="printBrandName">FITPRO MANAGER</div></div>
+      <div class="printBrand"><img class="printBrandMark" src="${appIconUrl()}" alt=""><div class="printBrandName">FITPRO MANAGER</div></div>
       <h2 style="margin-bottom:2px;">Recibo de Pagamento</h2>
       <div class="sub">${escapeHtml(s.nome)}</div>
       <table>
@@ -740,7 +744,7 @@ function renderAvaliacaoPrint(studentId, avaliacaoId){
       <button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
     </div>
     <div class="card" style="max-width:560px;">
-      <div class="printBrand"><div class="printBrandMark"></div><div class="printBrandName">FITPRO MANAGER</div></div>
+      <div class="printBrand"><img class="printBrandMark" src="${appIconUrl()}" alt=""><div class="printBrandName">FITPRO MANAGER</div></div>
       <h2 style="margin-bottom:2px;">${escapeHtml(s.nome)}</h2>
       <div class="sub">Avaliação Física • ${formatDate(av.data)}${s.objetivo?(' • '+escapeHtml(s.objetivo)):''}${s.nivel?(' • '+escapeHtml(s.nivel)):''}</div>
       <table>
