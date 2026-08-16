@@ -2243,6 +2243,7 @@ function renderStudentDetail(id){
           ${(feitos===total && total>0) ? `<button class="small" style="background:var(--green);" data-resumo-treino="${f.id}">Enviar resumo pro aluno</button>` : ''}
           <button class="secondary small" data-edit-ficha="${f.id}">Editar</button>
           <button class="ghost small" data-duplicate-ficha="${f.id}">Duplicar / Alternar</button>
+          ${db.students.length>1 ? `<button class="ghost small" data-duplicate-ficha-outro-aluno="${f.id}"><i class="ti ti-copy"></i> Duplicar para outro aluno</button>` : ''}
           ${s.fichas.length>1 ? `<button class="ghost small" data-compare-ficha="${f.id}"><i class="ti ti-arrows-shuffle"></i> Comparar</button>` : ''}
           <button class="secondary small" data-toggle-ficha="${f.id}">${f.ativa?'Arquivar':'Reativar'}</button>
           <button class="secondary small" data-reset-checks="${f.id}">Resetar marcações</button>
@@ -2806,6 +2807,13 @@ function bindEvents(){
       clone.exercicios = clone.exercicios.map(e=>({...e, id: uid(), feito:false}));
       s.fichas.push(clone);
       saveDB(); render();
+    };
+  });
+  document.querySelectorAll('[data-duplicate-ficha-outro-aluno]').forEach(el=>{
+    el.onclick = ()=>{
+      const s = db.students.find(x=>x.id===state.studentId);
+      const f = s.fichas.find(x=>x.id===el.dataset.duplicateFichaOutroAluno);
+      abrirModalDuplicarFichaOutroAluno(s, f);
     };
   });
   document.querySelectorAll('[data-compare-ficha]').forEach(el=>{
@@ -3776,6 +3784,46 @@ function compareTableHtml(f){
     </table>
     <div class="meta" style="margin-top:8px;font-weight:600;"><i class="ti ti-barbell"></i> Volume total: ${formatVolume(volumeTotalFicha(f))}kg</div>
   `;
+}
+function abrirModalDuplicarFichaOutroAluno(s, f){
+  const outros = db.students.filter(x=>x.id!==s.id).slice().sort((a,b)=>a.nome.localeCompare(b.nome));
+  if(outros.length===0){ showToast('Não há outro aluno cadastrado para duplicar esta ficha.', 'info'); return; }
+  const totalExercicios = (f.exercicios||[]).length;
+  openModal(`
+    <h3 style="margin-top:0;"><i class="ti ti-copy"></i> Duplicar ficha</h3>
+    <div class="sub" style="margin-bottom:16px;">Copiando <strong>${escapeHtml(f.nome||('Treino '+f.letra))}</strong> de <strong>${escapeHtml(s.nome)}</strong> (${totalExercicios} exercício(s)).</div>
+    <div class="field">
+      <label>Aluno de destino</label>
+      <select id="duplicarFichaAlunoSelect">
+        <option value="">Selecione um aluno...</option>
+        ${outros.map(a=>`<option value="${a.id}">${escapeHtml(a.nome)}</option>`).join('')}
+      </select>
+    </div>
+    <div class="meta" style="margin-top:10px;"><i class="ti ti-info-circle"></i> Uma cópia da ficha será criada para o aluno escolhido, com os mesmos exercícios, séries e cargas. Você poderá editar tudo depois.</div>
+    <div class="actions" style="justify-content:flex-end;margin-top:16px;">
+      <button class="secondary" id="btnDuplicarFichaCancelar">Cancelar</button>
+      <button id="btnDuplicarFichaConfirmar">Duplicar ficha</button>
+    </div>
+  `);
+  document.getElementById('btnDuplicarFichaCancelar').onclick = closeModal;
+  document.getElementById('btnDuplicarFichaConfirmar').onclick = ()=>{
+    const destinoId = document.getElementById('duplicarFichaAlunoSelect').value;
+    if(!destinoId){ showToast('Escolha um aluno de destino.', 'error'); return; }
+    const destino = db.students.find(x=>x.id===destinoId);
+    if(!destino) return;
+    const clone = JSON.parse(JSON.stringify(f));
+    clone.id = uid();
+    clone.letra = nextLetter((destino.fichas||[]).map(x=>x.letra));
+    clone.criadoEm = new Date().toISOString();
+    clone.ativa = true;
+    clone.exercicios = (clone.exercicios||[]).map(e=>({...e, id: uid(), feito:false}));
+    if(!destino.fichas) destino.fichas = [];
+    destino.fichas.push(clone);
+    saveDB();
+    closeModal();
+    render();
+    showToast(`Ficha duplicada para ${destino.nome}.`, 'success');
+  };
 }
 function openCompareModal(fichaA){
   const s = db.students.find(x=>x.id===state.studentId);
