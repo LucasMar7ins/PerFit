@@ -583,7 +583,7 @@ function appIconUrl(){
 let state = { tab:'inicio', studentId:null, chartMetric:'peso', studentFilter:'ativos', collapsedSections: { anamnese:true, evolucao:true, avaliacoes:true, fichas:false, cargas:false }, agendaView:null, agendaRef:null, printRecibo:null, printAvaliacao:null, treinoAoVivo:null, exerciseCollapsedGroups:{}, planejamentoSemanasQtd:3, planejamentoExpandido:null };
 // Precisa existir também aqui (além do bloco que fala com o Firebase) porque são dois
 // blocos de código separados (script normal x script "module") e não compartilham variáveis.
-const ADMIN_EMAIL = 'lucaspsneves1@gmail.com';
+const ADMIN_EMAIL = 'perfitmanager@gmail.com';
 const LIMITE_SEGURO_BYTES_UI = 900000;
 
 // ---------- REAVALIAÇÃO (lembrete) ----------
@@ -4058,7 +4058,7 @@ window.__fbResetPassword = (email) => sendPasswordResetEmail(auth, email);
 // E-mail da conta que pode ver o painel de uso (aba "Uso"), com dados de login/atividade
 // de todas as contas. Não dá acesso aos dados dos alunos de cada personal — só a esses
 // metadados de uso, guardados numa coleção separada.
-const ADMIN_EMAIL = 'lucaspsneves1@gmail.com';
+const ADMIN_EMAIL = 'perfitmanager@gmail.com';
 let filaSalvamento = Promise.resolve();
 // Detecção de conflito entre aparelhos: guardamos o "atualizadoEm" mais recente que ESTE
 // aparelho conhece. Se, na hora de salvar, o documento na nuvem tiver um "atualizadoEm"
