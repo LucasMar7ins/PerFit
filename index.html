@@ -4179,6 +4179,11 @@ function renderLandingScreen(){
   const btnSecondary = 'display:inline-block;background:transparent;color:var(--text);border:1px solid var(--line);padding:11px 22px;border-radius:7px;font-weight:600;cursor:pointer;font-size:14px;text-decoration:none;';
   const btnGhostSmall = 'display:inline-block;background:transparent;color:var(--accent);border:1px solid var(--accent);padding:8px 16px;border-radius:7px;font-weight:600;cursor:pointer;font-size:13px;text-decoration:none;';
   const btnOnAccent = 'display:inline-block;background:#fff;color:var(--accent);border:none;padding:11px 26px;border-radius:7px;font-weight:600;cursor:pointer;font-size:14px;text-decoration:none;';
+  const landingFaqItems = [
+    { q: 'Funciona bem no celular, ou só no computador?', a: 'Funciona direto pelo navegador, no computador ou no celular, sem precisar instalar nada. Dá pra adicionar como app na tela inicial do celular pra abrir mais rápido.' },
+    { q: 'Como funciona o teste grátis de 14 dias?', a: 'Você testa por 14 dias sem precisar cadastrar cartão. Ao final do período, o acesso é encerrado automaticamente.' },
+    { q: 'Tem limite de quantos alunos posso cadastrar?', a: 'Não. Você pode cadastrar quantos alunos precisar.' },
+  ];
   document.getElementById('main').innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 32px;max-width:1000px;margin:0 auto;">
       <div style="display:flex;align-items:center;gap:8px;">
@@ -4322,6 +4327,24 @@ function renderLandingScreen(){
       </div>
     </div>
 
+    <div style="max-width:640px;margin:0 auto;padding:8px 32px 56px;">
+      <div style="text-align:center;font-size:16px;font-weight:600;margin:0 0 8px;">Perguntas frequentes</div>
+      <div style="text-align:center;font-size:13px;color:var(--muted);margin:0 0 24px;">Tudo que você precisa saber antes de começar.</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        ${landingFaqItems.map((item,i)=>`
+          <div style="background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;">
+            <button type="button" data-faq-toggle="${i}" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;background:transparent;border:none;cursor:pointer;text-align:left;font-size:13px;font-weight:600;color:var(--text);">
+              <span>${escapeHtml(item.q)}</span>
+              <i class="ti ti-chevron-down" data-faq-icon="${i}" style="font-size:18px;color:var(--accent);flex-shrink:0;transition:transform .15s;"></i>
+            </button>
+            <div data-faq-answer="${i}" style="max-height:0;overflow:hidden;transition:max-height .2s ease;">
+              <div style="padding:0 16px 14px;font-size:12px;line-height:1.6;color:var(--muted);">${escapeHtml(item.a)}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
     <div style="background:var(--accent);text-align:center;padding:44px 32px;">
       <div style="font-size:19px;font-weight:600;color:#fff;margin:0 0 6px;">Pronto pra organizar seus alunos?</div>
       <div style="font-size:13px;color:#e3d9f9;margin:0 0 20px;">Fale com a gente e conheça o PerFit de perto.</div>
@@ -4351,6 +4374,21 @@ function renderLandingScreen(){
   const irParaLogin = (e)=>{ e.preventDefault(); renderLoginScreen(); };
   document.getElementById('linkEntrarTopo').onclick = irParaLogin;
   document.getElementById('linkEntrarRodape').onclick = irParaLogin;
+  document.querySelectorAll('[data-faq-toggle]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const idx = btn.dataset.faqToggle;
+      const answer = document.querySelector(`[data-faq-answer="${idx}"]`);
+      const icon = document.querySelector(`[data-faq-icon="${idx}"]`);
+      const isOpen = answer.style.maxHeight && answer.style.maxHeight !== '0px';
+      if(isOpen){
+        answer.style.maxHeight = '0px';
+        icon.style.transform = 'rotate(0deg)';
+      }else{
+        answer.style.maxHeight = answer.scrollHeight + 'px';
+        icon.style.transform = 'rotate(180deg)';
+      }
+    };
+  });
 }
 function renderLoginScreen(mensagem, emailPreenchido, tipoMensagem){
   window.scrollTo(0,0);
