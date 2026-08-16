@@ -3948,7 +3948,8 @@ function abrirModalTrocarEmail(){
       if(btnOk) btnOk.onclick = closeModal;
       showToast('Link de confirmação enviado.', 'success');
     }catch(err){
-      erroEl.textContent = traduzErroFirebase(err);
+      console.error('Erro ao trocar e-mail', err);
+      erroEl.textContent = traduzErroFirebase(err) + (err && err.code ? ' (' + err.code + ')' : '');
       erroEl.style.display = 'block';
       btnConfirmar.disabled = false;
       btnConfirmar.textContent = 'Trocar e-mail';
