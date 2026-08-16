@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="PerFit">
 
-<title>PerFit — Montagem de Treinos</title>
+<title>PerFit · Montagem de Treinos</title>
 <style>
   :root{
     --bg:#f7f7f9; --panel:#ffffff; --panel2:#f0eef7; --line:#e2e2e8;
@@ -346,7 +346,7 @@
   <div class="modal" id="modalBody"></div>
 </div>
 <div class="toastContainer" id="toastContainer"></div>
-<div class="syncWarningBanner noprint" id="syncWarning"><i class="ti ti-alert-triangle"></i> Sem conexão com a nuvem — suas alterações estão sendo salvas só neste aparelho até a internet voltar.</div>
+<div class="syncWarningBanner noprint" id="syncWarning"><i class="ti ti-alert-triangle"></i> Sem conexão com a nuvem. Suas alterações estão sendo salvas só neste aparelho até a internet voltar.</div>
 <div class="conflitoAvisoBanner noprint" id="conflitoAviso"><i class="ti ti-alert-triangle"></i> Detectamos uma alteração feita em outro aparelho depois que você abriu este. Para não perder nada, recarregue a página.<button type="button" id="btnRecarregarConflito">Recarregar agora</button></div>
 <div class="savePill noprint" id="savePill"><span class="savingSpin" style="display:inline-block;"></span><span class="savePillCheck" style="display:none;"><i class="ti ti-check"></i></span><span class="savePillText">Salvando...</span></div>
 
@@ -880,7 +880,7 @@ async function carregarPainelUso(){
           <tbody>${linhas || '<tr><td colspan="7" class="empty">Nenhum dado de uso ainda.</td></tr>'}</tbody>
         </table>
       </div>
-      <div class="meta" style="margin-top:10px;"><i class="ti ti-bulb"></i> Contas que nunca fizeram login não aparecem aqui — pra ver essas, confira a lista de usuários direto no Firebase Console (aba Authentication).</div>
+      <div class="meta" style="margin-top:10px;"><i class="ti ti-bulb"></i> Contas que nunca fizeram login não aparecem aqui. Pra ver essas, confira a lista de usuários direto no Firebase Console (aba Authentication).</div>
     `;
   } catch(e){
     console.error('Erro ao carregar painel de uso', e);
@@ -1215,7 +1215,7 @@ function renderPagamentos(){
       <span class="tag green"><i class="ti ti-circle-check"></i> ${emDia} em dia</span>
       <span class="tag yellow"><i class="ti ti-clock"></i> ${pendentes} pendente(s)</span>
       <span class="tag red"><i class="ti ti-alert-triangle"></i> ${atrasados} atrasado(s)</span>
-      <span class="tag gray" style="margin-left:auto;" title="Soma da mensalidade configurada de todos os alunos ativos — o teto do mês, se todos pagarem em dia."><i class="ti ti-currency-dollar"></i> Receita mensal estimada: R$ ${receitaFormatada}</span>
+      <span class="tag gray" style="margin-left:auto;" title="Soma da mensalidade configurada de todos os alunos ativos: o teto do mês, se todos pagarem em dia."><i class="ti ti-currency-dollar"></i> Receita mensal estimada: R$ ${receitaFormatada}</span>
     </div>
     ${atrasados>0 ? `<div class="banner noprint"><i class="ti ti-alert-triangle"></i> <strong>${atrasados} aluno(s)</strong> com pagamento atrasado este mês.</div>` : ''}
     <div class="card" style="overflow-x:auto;">
@@ -1883,7 +1883,7 @@ function buildEvolutionChart(avaliacoesAsc, metricKey, unit){
   const first = pontos[0].valor, last = pontos[pontos.length-1].valor;
   const diff = last - first;
   const diffColor = diff>0?'var(--green)':(diff<0?'var(--red)':'var(--muted)');
-  const diffArrow = diff>0?'▲':(diff<0?'▼':'—');
+  const diffArrow = diff>0?'▲':(diff<0?'▼':'-');
   return `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
       <span class="meta">${pontos.length} registro(s)</span>
@@ -2059,7 +2059,7 @@ function renderStudentDetail(id){
     if(sorted.length>1 && !isNaN(numFirst) && !isNaN(numLast)){
       const diff = numLast - numFirst;
       const color = diff>0?'var(--green)':(diff<0?'var(--red)':'var(--muted)');
-      const arrow = diff>0?'▲':(diff<0?'▼':'—');
+      const arrow = diff>0?'▲':(diff<0?'▼':'-');
       deltaHtml = `<span style="color:${color};font-weight:700;font-size:13px;">${arrow} ${diff>0?'+':''}${diff.toFixed(1)} desde ${formatDate(first.data)}</span>`;
     }
     const rows = sorted.slice().reverse().map(e=>`
@@ -2363,7 +2363,7 @@ function renderBackup(){
     <div class="card noprint">
       <div style="font-weight:600;margin-bottom:8px;">Exportar backup</div>
       <div class="meta" style="margin-bottom:12px;">Gera um arquivo .json com todos os alunos, fichas, avaliações e o banco de exercícios.</div>
-      ${(()=>{ const b = backupStatus(); const cor = b.atrasado ? 'var(--yellow)' : 'var(--green)'; const msg = b.nunca ? 'Nenhum backup exportado ainda.' : (b.atrasado ? `Último backup há ${b.dias} dia(s) — recomendado exportar a cada ${BACKUP_DIAS_LIMITE} dias.` : `Último backup há ${b.dias} dia(s). Tudo em dia.`); return `<div class="meta" style="margin-bottom:12px;color:${cor};font-weight:600;">${b.atrasado?'<i class="ti ti-alert-triangle"></i>':'<i class="ti ti-circle-check"></i>'} ${msg}</div>`; })()}
+      ${(()=>{ const b = backupStatus(); const cor = b.atrasado ? 'var(--yellow)' : 'var(--green)'; const msg = b.nunca ? 'Nenhum backup exportado ainda.' : (b.atrasado ? `Último backup há ${b.dias} dia(s). Recomendado exportar a cada ${BACKUP_DIAS_LIMITE} dias.` : `Último backup há ${b.dias} dia(s). Tudo em dia.`); return `<div class="meta" style="margin-bottom:12px;color:${cor};font-weight:600;">${b.atrasado?'<i class="ti ti-alert-triangle"></i>':'<i class="ti ti-circle-check"></i>'} ${msg}</div>`; })()}
       <button id="btnExportBackup"><i class="ti ti-download"></i> Baixar backup (.json)</button>
     </div>
     <div class="card noprint">
@@ -3104,7 +3104,7 @@ function openFichasArquivadasModal(studentId){
       <div class="card" style="margin-bottom:10px;padding:12px;">
         <div class="row" style="justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
           <div>
-            <div style="font-weight:600;">${escapeHtml(f.letra)} — ${escapeHtml(f.nome||('Treino '+f.letra))}</div>
+            <div style="font-weight:600;">${escapeHtml(f.letra)} · ${escapeHtml(f.nome||('Treino '+f.letra))}</div>
             <div class="meta">${total} exercício(s) • criado em ${formatDate(f.criadoEm)} • Volume: ${formatVolume(volumeTotalFicha(f))}kg</div>
           </div>
           <div class="row" style="gap:6px;flex-wrap:wrap;">
@@ -3286,7 +3286,7 @@ function openAvaliacaoModal(av){
       <div class="field"><label>Supraespinhal (mm)</label><input id="avDobraSupraespinhal" value="${editing?escapeAttr(av.dobraSupraespinhal||''):''}"></div>
     </div>
     <div class="anamneseBox" style="margin-top:-4px;margin-bottom:10px;font-size:12px;">
-      <i class="ti ti-alert-triangle"></i> O % de gordura é uma <strong>estimativa</strong> pelo método US Navy (fita métrica), com margem de erro de aproximadamente 3-4% em relação a exames de laboratório (DEXA), e tende a errar mais em pessoas muito magras ou muito musculosas. Se você tiver adipômetro, bioimpedância ou outro equipamento próprio, digite o valor real por cima — o campo é totalmente editável e seu valor não será sobrescrito sozinho.
+      <i class="ti ti-alert-triangle"></i> O % de gordura é uma <strong>estimativa</strong> pelo método US Navy (fita métrica), com margem de erro de aproximadamente 3-4% em relação a exames de laboratório (DEXA), e tende a errar mais em pessoas muito magras ou muito musculosas. Se você tiver adipômetro, bioimpedância ou outro equipamento próprio, digite o valor real por cima. O campo é totalmente editável e seu valor não será sobrescrito sozinho.
     </div>
     <div class="meta" id="avGorduraHint" style="margin-top:-4px;margin-bottom:10px;"></div>
     <div class="actions">
@@ -3299,7 +3299,7 @@ function openAvaliacaoModal(av){
   function recalcularGordura(force){
     const hint = document.getElementById('avGorduraHint');
     if(manualOverride && !force){
-      hint.textContent = 'Valor digitado manualmente — não será sobrescrito automaticamente. Clique em 🔄 para recalcular pela fórmula.';
+      hint.textContent = 'Valor digitado manualmente. Não será sobrescrito automaticamente. Clique em 🔄 para recalcular pela fórmula.';
       hint.style.color = 'var(--muted)';
       return;
     }
@@ -3446,7 +3446,7 @@ function openObservacaoModal(fichaId, execId){
   const f = s.fichas.find(x=>x.id===fichaId);
   const ex = f.exercicios.find(x=>x.id===execId);
   openModal(`
-    <h3>Observação — ${escapeHtml(ex.nome)}</h3>
+    <h3>Observação · ${escapeHtml(ex.nome)}</h3>
     <div class="field"><label>Anotações rápidas (dor, dificuldade, observações)</label>
       <textarea id="noteText" style="min-height:130px;" placeholder="Ex: sentiu dor no ombro na última série...">${escapeHtml(ex.notas||'')}</textarea>
     </div>
@@ -3466,7 +3466,7 @@ function openAnamneseModal(){
   const a = s.anamneseCompleta || {};
   document.getElementById('modalBody').classList.add('wide');
   openModal(`
-    <h3 style="margin-bottom:2px;">Anamnese completa — ${escapeHtml(s.nome)}</h3>
+    <h3 style="margin-bottom:2px;">Anamnese completa · ${escapeHtml(s.nome)}</h3>
     <div class="meta" style="margin-bottom:14px;">Preenchido uma vez e atualizado quando necessário. Não muda a cada avaliação física.</div>
     ${ANAMNESE_QUESTOES.map(cat => `
       <div class="sectionTitle" style="font-size:14px;margin:16px 0 8px;">${escapeHtml(cat.categoria)}</div>
@@ -3505,7 +3505,7 @@ function openPagamentosModal(studentId){
   const situacao = statusPagamentoAluno(s);
   document.getElementById('modalBody').classList.add('wide');
   openModal(`
-    <h3 style="margin-bottom:2px;"><i class="ti ti-credit-card"></i> Pagamentos — ${escapeHtml(s.nome)}</h3>
+    <h3 style="margin-bottom:2px;"><i class="ti ti-credit-card"></i> Pagamentos · ${escapeHtml(s.nome)}</h3>
     <div class="row" style="margin:8px 0 16px;"><span class="tag ${statusPagamentoClass(situacao.status)}">${statusPagamentoLabel(situacao.status)} (${formatMes(mesAtual())})</span></div>
 
     <div class="sectionTitle" style="font-size:14px;margin:6px 0 8px;">Configuração da mensalidade</div>
@@ -3602,7 +3602,7 @@ function openRegistroPagamentoModal(s, registro, onDone){
   const valorPadrao = editing ? (registro.valor||'') : ((s.pagamento&&s.pagamento.valorMensalidade)||'');
   document.getElementById('modalBody').classList.add('wide');
   openModal(`
-    <h3>${editing?'Editar':'Registrar'} pagamento — ${escapeHtml(s.nome)}</h3>
+    <h3>${editing?'Editar':'Registrar'} pagamento · ${escapeHtml(s.nome)}</h3>
     <div class="row">
       <div class="field" style="flex:1"><label>Mês de referência</label><input id="rpMes" type="month" value="${escapeAttr(mesPadrao)}"></div>
       <div class="field" style="flex:1"><label>Status</label>
@@ -3675,7 +3675,7 @@ function openCompareModal(fichaA){
   if(others.length===0){ showToast('Este aluno só tem uma ficha, não há outra para comparar.', 'info'); return; }
   document.getElementById('modalBody').classList.add('wide');
   openModal(`
-    <h3 style="margin-bottom:10px;">Comparar fichas — ${escapeHtml(s.nome)}</h3>
+    <h3 style="margin-bottom:10px;">Comparar fichas · ${escapeHtml(s.nome)}</h3>
     <div class="field"><label>Comparar "${escapeHtml(fichaA.nome||('Treino '+fichaA.letra))}" com:</label>
       <select id="compareSelect">
         ${others.map(f=>`<option value="${f.id}">${escapeHtml(f.nome||('Treino '+f.letra))} (${f.ativa?'ativa':'arquivada'})</option>`).join('')}
@@ -3736,7 +3736,7 @@ function openFichaModal(ficha){
         <option value="">Em branco</option>
         ${Object.entries(TEMPLATES_FICHA).map(([key,t])=>`<option value="${key}">${escapeHtml(t.label)}</option>`).join('')}
       </select>
-      <div class="meta">O modelo só preenche exercício e grupo — séries, reps e carga continuam em branco pra você digitar.</div>
+      <div class="meta">O modelo só preenche exercício e grupo. Séries, reps e carga continuam em branco pra você digitar.</div>
     </div>
     ` : ''}
     <div class="row">
@@ -3947,7 +3947,7 @@ function abrirModalTrocarEmail(){
       await window.__fbChangeEmail(senha, novoEmail);
       openModal(`
         <h3 style="margin-top:0;"><i class="ti ti-mail-check"></i> Confirme pelo e-mail</h3>
-        <div class="sub">Enviamos um link de confirmação para <strong>${escapeHtml(novoEmail)}</strong>. Abra essa caixa de entrada (e o spam) e clique no link — só depois disso o login passa a usar o novo e-mail. Sua senha e seus dados continuam os mesmos.</div>
+        <div class="sub">Enviamos um link de confirmação para <strong>${escapeHtml(novoEmail)}</strong>. Abra essa caixa de entrada (e o spam) e clique no link. Só depois disso o login passa a usar o novo e-mail. Sua senha e seus dados continuam os mesmos.</div>
         <div style="display:flex;justify-content:flex-end;margin-top:16px;">
           <button id="btnFecharTrocarEmailOk">Entendi</button>
         </div>
@@ -4298,7 +4298,7 @@ window.__showTesteExpirado = function(){
   const btnSairTeste = document.getElementById('btnSairTeste');
   if(btnSairTeste) btnSairTeste.onclick = ()=>{ if(window.__fbSignOut) window.__fbSignOut(); };
 };
-const MSG_SYNC_PADRAO = '⚠️ Sem conexão com a nuvem — suas alterações estão sendo salvas só neste aparelho até a internet voltar.';
+const MSG_SYNC_PADRAO = '⚠️ Sem conexão com a nuvem. Suas alterações estão sendo salvas só neste aparelho até a internet voltar.';
 window.__showSyncWarning = function(mensagem){
   const el = document.getElementById('syncWarning');
   if(el){
@@ -4526,7 +4526,7 @@ window.__cloudSave = (uid, data) => {
   // o conteúdo real dos dados de ninguém, só o tamanho em bytes.
   setDoc(doc(dbFire, 'atividade', uid), { tamanhoBytes }, { merge: true }).catch(()=>{});
   if(tamanhoBytes > LIMITE_SEGURO_BYTES){
-    if(window.__showSyncWarning) window.__showSyncWarning('⚠️ Os dados ficaram grandes demais para sincronizar com a nuvem (muitas fotos ou anexos). Apague fotos ou anexos antigos para voltar a sincronizar — por enquanto, as alterações estão salvas só neste aparelho.');
+    if(window.__showSyncWarning) window.__showSyncWarning('⚠️ Os dados ficaram grandes demais para sincronizar com a nuvem (muitas fotos ou anexos). Apague fotos ou anexos antigos para voltar a sincronizar. Por enquanto, as alterações estão salvas só neste aparelho.');
     return Promise.resolve();
   }
   filaSalvamento = filaSalvamento.then(async () => {
