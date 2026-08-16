@@ -24,7 +24,8 @@
   body{margin:0;font-family:'Segoe UI',Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);overflow-anchor:none;}
   .app{display:flex;min-height:100vh;}
   nav{width:220px;background:var(--panel);border-right:1px solid var(--line);padding:20px 0;flex-shrink:0;overflow-anchor:none;}
-  nav h1{font-size:18px;padding:0 20px 20px;margin:0;color:var(--accent);border-bottom:1px solid var(--line);}
+  nav h1{font-size:18px;padding:0 20px 20px;margin:0;color:var(--accent);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;}
+  .navLogo{width:24px;height:24px;border-radius:7px;flex-shrink:0;object-fit:contain;}
   nav h1 span{color:var(--accent2);}
   nav .tab{padding:12px 20px;cursor:pointer;color:var(--muted);font-size:14px;border-left:3px solid transparent;}
   nav .tab:hover{background:var(--panel2);color:var(--text);}
@@ -275,7 +276,7 @@
 <body>
 <div class="app">
   <nav style="display:none;">
-    <h1>Per<span>Fit</span></h1>
+    <h1><img id="navLogo" class="navLogo" alt="">Per<span>Fit</span></h1>
     <div class="tab active" data-tab="inicio">🏠 Início</div>
     <div class="tab" data-tab="alunos">👤 Alunos</div>
     <div class="tab" data-tab="pagamentos">💳 Pagamentos</div>
@@ -3938,6 +3939,8 @@ window.__showConflitoAviso = function(){
   if(el) el.classList.add('show');
 };
 document.addEventListener('DOMContentLoaded', ()=>{
+  const navLogo = document.getElementById('navLogo');
+  if(navLogo) navLogo.src = appIconUrl();
   const navSair = document.getElementById('navSair');
   if(navSair) navSair.onclick = ()=>{ if(window.__fbSignOut) window.__fbSignOut(); };
   const btnRecarregarConflito = document.getElementById('btnRecarregarConflito');
