@@ -37,6 +37,29 @@
   .printBrand{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
   .printBrandMark{width:26px;height:26px;border-radius:7px;flex-shrink:0;object-fit:contain;}
   .printBrandName{font-size:13px;font-weight:600;color:var(--accent);letter-spacing:.3px;}
+  .printDoc{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;max-width:760px;margin-bottom:16px;}
+  .printHeader{background:var(--accent);padding:16px 22px;display:flex;justify-content:space-between;align-items:center;}
+  .printHeaderBrand{display:flex;align-items:center;gap:10px;}
+  .printHeaderBrand img{width:26px;height:26px;border-radius:7px;object-fit:contain;flex-shrink:0;}
+  .printHeaderBrand span{color:#fff;font-weight:700;font-size:14px;letter-spacing:.3px;}
+  .printHeaderLabel{color:rgba(255,255,255,.85);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;}
+  .printBody{padding:22px 24px;}
+  .printBody h2{margin-top:0;margin-bottom:2px;}
+  .printBadges{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 18px;}
+  .printBadge{background:var(--panel2);color:#3c3489;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;display:inline-block;}
+  .printDoc table{width:100%;border-collapse:collapse;font-size:13px;}
+  .printDoc th{text-align:left;background:var(--panel2);color:#3c3489;font-weight:600;font-size:10px;text-transform:uppercase;padding:9px 10px;border-bottom:none;}
+  .printDoc th:first-child{border-radius:7px 0 0 7px;}
+  .printDoc th:last-child{border-radius:0 7px 7px 0;}
+  .printDoc td{padding:10px;border-bottom:1px solid #eeeef2;color:var(--text);}
+  .printDoc tbody tr:not(.printRowCombo):nth-child(even) td{background:#fafafb;}
+  .printDoc tbody tr.printRowCombo td{background:#f7f4fd;}
+  .printDoc tbody tr.printRowCombo td:first-child{border-left:3px solid var(--accent);}
+  .printStatsRow{display:flex;gap:10px;margin-top:18px;}
+  .printStatCard{flex:1;background:var(--panel2);border-radius:10px;padding:12px 14px;}
+  .printStatCard .v{font-size:18px;font-weight:700;color:var(--accent);}
+  .printStatCard .k{font-size:11px;color:var(--muted);}
+  .printFooter{border-top:1px solid var(--line);padding:12px 24px;display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--muted);}
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
   input,select,textarea{background:var(--panel2);border:1px solid var(--line);color:var(--text);padding:9px 11px;border-radius:7px;font-size:14px;}
   input:focus,select:focus,textarea:focus{outline:1px solid var(--accent);}
@@ -270,6 +293,21 @@
     td{color:#18181b;border-color:#eeeef2;padding:9px 8px;}
     .inlineEdit{border:none !important;background:transparent !important;color:#18181b !important;padding:0;}
     .onlyPrint{display:block !important;}
+    .printDoc{border:1px solid #e2e2e8;background:#fff;border-radius:10px;overflow:hidden;}
+    .printHeader{background:#6e2de7;padding:16px 22px;}
+    .printHeaderBrand span{color:#fff;}
+    .printHeaderLabel{color:rgba(255,255,255,.85);}
+    .printBody{padding:22px 24px;}
+    .printBadge{background:#f0eef7;color:#3c3489;}
+    .printDoc th{background:#f0eef7;color:#3c3489;}
+    .printDoc td{border-color:#eeeef2;}
+    .printDoc tbody tr:not(.printRowCombo):nth-child(even) td{background:#fafafb;}
+    .printDoc tbody tr.printRowCombo td{background:#f7f4fd;}
+    .printDoc tbody tr.printRowCombo td:first-child{border-left:3px solid #6e2de7;}
+    .printStatCard{background:#f0eef7;}
+    .printStatCard .v{color:#6e2de7;}
+    .printStatCard .k{color:#6b6b76;}
+    .printFooter{border-color:#eeeef2;color:#6b6b76;}
   }
 </style>
 </head>
@@ -848,25 +886,40 @@ function renderFichaPrint(studentId, fichaId){
   const linhasExerciciosPrint = f.exercicios.map((e,idxEx)=>{
     const anteriorEx = f.exercicios[idxEx-1];
     const destacadoEx = e.encadeado || (anteriorEx && anteriorEx.encadeado);
-    return `<tr style="${destacadoEx?'background:var(--panel2);border-left:3px solid var(--accent);':''}"><td>☐</td><td>${escapeHtml(e.nome)}${e.encadeado?' 🔗':''}</td><td>${escapeHtml(e.grupo||'-')}</td><td>${escapeHtml(e.series||'-')}</td><td>${escapeHtml(e.reps||'-')}</td><td>${escapeHtml(e.obs||'-')}</td><td>${escapeHtml(e.descanso||'-')}</td><td>${escapeHtml(e.metodo||'-')}</td><td>${formatVolume(calcularVolumeExercicio(e))}</td></tr>`;
+    return `<tr class="${destacadoEx?'printRowCombo':''}"><td>☐</td><td>${escapeHtml(e.nome)}${e.encadeado?' 🔗':''}</td><td>${escapeHtml(e.grupo||'-')}</td><td>${escapeHtml(e.series||'-')}</td><td>${escapeHtml(e.reps||'-')}</td><td>${escapeHtml(e.obs||'-')}</td><td>${escapeHtml(e.descanso||'-')}</td><td>${escapeHtml(e.metodo||'-')}</td><td>${formatVolume(calcularVolumeExercicio(e))}</td></tr>`;
   }).join('');
   return `
     <span class="backBtn noprint" id="backFromPrint">&larr; Voltar para o aluno</span>
     <div class="row noprint" style="margin-bottom:16px;">
       <button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
     </div>
-    <div class="card" style="max-width:760px;">
-      <div class="printBrand"><img class="printBrandMark" src="${appIconUrl()}" alt=""><div class="printBrandName">PERFIT</div></div>
-      <h2 style="margin-bottom:2px;">${escapeHtml(s.nome)}</h2>
-      <div class="sub">${escapeHtml(f.nome || ('Treino '+f.letra))} • Treino ${escapeHtml(f.letra)}${s.objetivo?(' • '+escapeHtml(s.objetivo)):''}${s.nivel?(' • '+escapeHtml(s.nivel)):''}</div>
-      <table>
-        <thead><tr><th style="width:30px;"></th><th>Exercício</th><th>Grupo</th><th>Séries</th><th>Reps</th><th>Carga</th><th>Descanso</th><th>Método</th><th>Volume</th></tr></thead>
-        <tbody>
-          ${linhasExerciciosPrint}
-        </tbody>
-      </table>
-      <div class="meta" style="margin-top:10px;font-weight:600;">🏋️ Volume total do treino: ${formatVolume(volumeTotalFicha(f))}kg</div>
-      <div class="meta" style="margin-top:6px;">Gerado em ${formatDate(hoje)} • PerFit</div>
+    <div class="printDoc" style="max-width:760px;">
+      <div class="printHeader">
+        <div class="printHeaderBrand"><img src="${appIconUrl()}" alt=""><span>PERFIT</span></div>
+        <div class="printHeaderLabel">Ficha de treino</div>
+      </div>
+      <div class="printBody">
+        <h2>${escapeHtml(s.nome)}</h2>
+        <div class="printBadges">
+          <span class="printBadge">${escapeHtml(f.nome || ('Treino '+f.letra))}</span>
+          ${s.objetivo ? `<span class="printBadge">${escapeHtml(s.objetivo)}</span>` : ''}
+          ${s.nivel ? `<span class="printBadge">${escapeHtml(s.nivel)}</span>` : ''}
+        </div>
+        <table>
+          <thead><tr><th style="width:30px;"></th><th>Exercício</th><th>Grupo</th><th>Séries</th><th>Reps</th><th>Carga</th><th>Descanso</th><th>Método</th><th>Volume</th></tr></thead>
+          <tbody>
+            ${linhasExerciciosPrint}
+          </tbody>
+        </table>
+        <div class="printStatsRow">
+          <div class="printStatCard"><div class="v">${formatVolume(volumeTotalFicha(f))}kg</div><div class="k">Volume total do treino</div></div>
+          <div class="printStatCard"><div class="v">${f.exercicios.length}</div><div class="k">Exercício(s)</div></div>
+        </div>
+      </div>
+      <div class="printFooter">
+        <span>Gerado em ${formatDate(hoje)} por PerFit</span>
+        <span>lucasmar7ins.github.io/PerFit/</span>
+      </div>
     </div>
   `;
 }
@@ -883,23 +936,33 @@ function renderReciboPrint(studentId, registroId){
     <div class="row noprint" style="margin-bottom:16px;">
       <button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
     </div>
-    <div class="card" style="max-width:560px;">
-      <div class="printBrand"><img class="printBrandMark" src="${appIconUrl()}" alt=""><div class="printBrandName">PERFIT</div></div>
-      <h2 style="margin-bottom:2px;">Recibo de Pagamento</h2>
-      <div class="sub">${escapeHtml(s.nome)}</div>
-      <table>
-        <tbody>
-          <tr><td style="color:var(--muted);width:170px;">Aluno</td><td style="font-weight:600;">${escapeHtml(s.nome)}</td></tr>
-          <tr><td style="color:var(--muted);">Referente a</td><td>${formatMes(r.mes)}</td></tr>
-          <tr><td style="color:var(--muted);">Valor</td><td style="font-weight:600;">${r.valor ? 'R$ '+escapeHtml(String(r.valor)) : '-'}</td></tr>
-          <tr><td style="color:var(--muted);">Data do pagamento</td><td>${r.dataPagamento?formatDate(r.dataPagamento):'-'}</td></tr>
-          <tr><td style="color:var(--muted);">Método</td><td>${r.metodo?escapeHtml(r.metodo):'-'}</td></tr>
-          <tr><td style="color:var(--muted);">Status</td><td>${r.status==='pago'?'✅ Pago':'🕒 Pendente'}</td></tr>
-          ${r.obs ? `<tr><td style="color:var(--muted);">Observações</td><td>${escapeHtml(r.obs)}</td></tr>` : ''}
-        </tbody>
-      </table>
-      <div class="meta" style="margin-top:20px;">Recibo referente à prestação de serviços de personal trainer.</div>
-      <div class="meta" style="margin-top:6px;">Emitido em ${formatDate(hoje)} • PerFit</div>
+    <div class="printDoc" style="max-width:560px;">
+      <div class="printHeader">
+        <div class="printHeaderBrand"><img src="${appIconUrl()}" alt=""><span>PERFIT</span></div>
+        <div class="printHeaderLabel">Recibo</div>
+      </div>
+      <div class="printBody">
+        <h2>Recibo de Pagamento</h2>
+        <div class="printBadges">
+          <span class="printBadge">${escapeHtml(s.nome)}</span>
+          <span class="printBadge">${r.status==='pago'?'✅ Pago':'🕒 Pendente'}</span>
+        </div>
+        <table>
+          <tbody>
+            <tr><td style="color:var(--muted);width:170px;">Aluno</td><td style="font-weight:600;">${escapeHtml(s.nome)}</td></tr>
+            <tr><td style="color:var(--muted);">Referente a</td><td>${formatMes(r.mes)}</td></tr>
+            <tr><td style="color:var(--muted);">Valor</td><td style="font-weight:600;">${r.valor ? 'R$ '+escapeHtml(String(r.valor)) : '-'}</td></tr>
+            <tr><td style="color:var(--muted);">Data do pagamento</td><td>${r.dataPagamento?formatDate(r.dataPagamento):'-'}</td></tr>
+            <tr><td style="color:var(--muted);">Método</td><td>${r.metodo?escapeHtml(r.metodo):'-'}</td></tr>
+            ${r.obs ? `<tr><td style="color:var(--muted);">Observações</td><td>${escapeHtml(r.obs)}</td></tr>` : ''}
+          </tbody>
+        </table>
+        <div class="meta" style="margin-top:16px;">Recibo referente à prestação de serviços de personal trainer.</div>
+      </div>
+      <div class="printFooter">
+        <span>Emitido em ${formatDate(hoje)} por PerFit</span>
+        <span>lucasmar7ins.github.io/PerFit/</span>
+      </div>
     </div>
   `;
 }
@@ -918,43 +981,54 @@ function renderAvaliacaoPrint(studentId, avaliacaoId){
     <div class="row noprint" style="margin-bottom:16px;">
       <button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
     </div>
-    <div class="card" style="max-width:560px;">
-      <div class="printBrand"><img class="printBrandMark" src="${appIconUrl()}" alt=""><div class="printBrandName">PERFIT</div></div>
-      <h2 style="margin-bottom:2px;">${escapeHtml(s.nome)}</h2>
-      <div class="sub">Avaliação Física • ${formatDate(av.data)}${s.objetivo?(' • '+escapeHtml(s.objetivo)):''}${s.nivel?(' • '+escapeHtml(s.nivel)):''}</div>
-      <table>
-        <tbody>
-          ${stat('Idade',av.idade,'anos')}
-          ${stat('Peso',av.peso,'kg')}
-          ${stat('Altura',av.altura,'cm')}
-          ${stat('% Gordura',av.percGordura,'%')}
-          ${stat('Pescoço',av.circPescoco,'cm')}
-          ${stat('Tórax',av.circPeito,'cm')}
-          ${stat('Cintura',av.circCintura,'cm')}
-          ${stat('Quadril',av.circQuadril,'cm')}
-          ${stat('Abdômen',av.circAbdomen,'cm')}
-          ${stat('Braço',av.circBraco,'cm')}
-          ${stat('Coxa',av.circCoxa,'cm')}
-          ${stat('Panturrilha',av.circPanturrilha,'cm')}
-        </tbody>
-      </table>
-      ${temDobras ? `
-      <div class="meta" style="margin-top:14px;margin-bottom:4px;">Dobras cutâneas</div>
-      <table>
-        <tbody>
-          ${stat('Tricipital',av.dobraTricipital,'mm')}
-          ${stat('Bicipital',av.dobraBicipital,'mm')}
-          ${stat('Abdominal',av.dobraAbdominal,'mm')}
-          ${stat('Subescapular',av.dobraSubescapular,'mm')}
-          ${stat('Coxa',av.dobraCoxa,'mm')}
-          ${stat('Torácica',av.dobraToracica,'mm')}
-          ${stat('Suprailíaca',av.dobraSuprailiaca,'mm')}
-          ${stat('Supraespinhal',av.dobraSupraespinhal,'mm')}
-        </tbody>
-      </table>
-      ` : ''}
-      <div class="meta" style="margin-top:20px;">Avaliação física registrada por PerFit.</div>
-      <div class="meta" style="margin-top:6px;">Gerado em ${formatDate(hoje)} • PerFit</div>
+    <div class="printDoc" style="max-width:560px;">
+      <div class="printHeader">
+        <div class="printHeaderBrand"><img src="${appIconUrl()}" alt=""><span>PERFIT</span></div>
+        <div class="printHeaderLabel">Avaliação física</div>
+      </div>
+      <div class="printBody">
+        <h2>${escapeHtml(s.nome)}</h2>
+        <div class="printBadges">
+          <span class="printBadge">${formatDate(av.data)}</span>
+          ${s.objetivo ? `<span class="printBadge">${escapeHtml(s.objetivo)}</span>` : ''}
+          ${s.nivel ? `<span class="printBadge">${escapeHtml(s.nivel)}</span>` : ''}
+        </div>
+        <table>
+          <tbody>
+            ${stat('Idade',av.idade,'anos')}
+            ${stat('Peso',av.peso,'kg')}
+            ${stat('Altura',av.altura,'cm')}
+            ${stat('% Gordura',av.percGordura,'%')}
+            ${stat('Pescoço',av.circPescoco,'cm')}
+            ${stat('Tórax',av.circPeito,'cm')}
+            ${stat('Cintura',av.circCintura,'cm')}
+            ${stat('Quadril',av.circQuadril,'cm')}
+            ${stat('Abdômen',av.circAbdomen,'cm')}
+            ${stat('Braço',av.circBraco,'cm')}
+            ${stat('Coxa',av.circCoxa,'cm')}
+            ${stat('Panturrilha',av.circPanturrilha,'cm')}
+          </tbody>
+        </table>
+        ${temDobras ? `
+        <div class="meta" style="margin-top:16px;margin-bottom:6px;font-weight:600;">Dobras cutâneas</div>
+        <table>
+          <tbody>
+            ${stat('Tricipital',av.dobraTricipital,'mm')}
+            ${stat('Bicipital',av.dobraBicipital,'mm')}
+            ${stat('Abdominal',av.dobraAbdominal,'mm')}
+            ${stat('Subescapular',av.dobraSubescapular,'mm')}
+            ${stat('Coxa',av.dobraCoxa,'mm')}
+            ${stat('Torácica',av.dobraToracica,'mm')}
+            ${stat('Suprailíaca',av.dobraSuprailiaca,'mm')}
+            ${stat('Supraespinhal',av.dobraSupraespinhal,'mm')}
+          </tbody>
+        </table>
+        ` : ''}
+      </div>
+      <div class="printFooter">
+        <span>Gerado em ${formatDate(hoje)} por PerFit</span>
+        <span>lucasmar7ins.github.io/PerFit/</span>
+      </div>
     </div>
   `;
 }
