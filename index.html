@@ -1160,7 +1160,17 @@ function renderInicio(){
   const hojeFormatado = new Date().toLocaleDateString('pt-BR', {weekday:'long', day:'numeric', month:'long'});
 
   const listaAgenda = agendaHoje.length
-    ? agendaHoje.map(a=>`<div class="dashListRow" data-inicio-open-student="${a.aluno.id}"><span>${escapeHtml(a.aluno.nome)}</span><span style="color:var(--accent);font-weight:600;">${escapeHtml(a.horario||'-')}</span></div>`).join('')
+    ? agendaHoje.map(a=>{
+        const mensagemLembrete = `Oi ${a.aluno.nome}! Só lembrando que você tem treino marcado hoje às ${a.horario||''}. Te espero! 💪`;
+        const linkLembrete = a.aluno.whatsapp ? whatsappLink(a.aluno.whatsapp, mensagemLembrete) : null;
+        return `<div class="dashListRow" data-inicio-open-student="${a.aluno.id}">
+          <span>${escapeHtml(a.aluno.nome)}</span>
+          <span style="display:flex;align-items:center;gap:8px;">
+            <span style="color:var(--accent);font-weight:600;">${escapeHtml(a.horario||'-')}</span>
+            ${linkLembrete ? `<a href="${linkLembrete}" target="_blank" rel="noopener" data-agenda-lembrete title="Lembrar treino no WhatsApp" style="text-decoration:none;">💬</a>` : ''}
+          </span>
+        </div>`;
+      }).join('')
     : `<div class="empty" style="padding:14px 0;">Nenhum treino agendado para hoje.</div>`;
 
   const listaAtrasados = atrasados.length
