@@ -3900,13 +3900,14 @@ function traduzErroFirebase(err){
     'auth/network-request-failed':'Falha de conexão. Verifique sua internet e tente de novo.',
     'auth/missing-email':'Digite seu e-mail.',
     'auth/requires-recent-login':'Por segurança, entre novamente antes de trocar o e-mail.',
+    'auth/operation-not-allowed':'Essa troca não está habilitada nas configurações do Firebase.',
   };
   return map[code] || 'Não foi possível entrar. Tente novamente.';
 }
 function abrirModalTrocarEmail(){
   openModal(`
     <h3 style="margin-top:0;">✉️ Trocar e-mail da conta</h3>
-    <div class="sub" style="margin-bottom:16px;">Isso troca o e-mail de login desta conta (seus dados e senha continuam os mesmos). Confirme sua senha atual pra prosseguir.</div>
+    <div class="sub" style="margin-bottom:16px;">Vamos enviar um link de confirmação para o novo e-mail. Só depois de você clicar nesse link é que o login passa a usar o novo endereço (seus dados e senha continuam os mesmos). Confirme sua senha atual pra prosseguir.</div>
     <div id="trocarEmailErro" class="banner" style="display:none;border-color:var(--red);margin-bottom:14px;"></div>
     <div class="field"><label>E-mail atual</label><input type="text" value="${escapeAttr((window.__fitproEmailAtual)||'')}" disabled></div>
     <div class="field"><label>Novo e-mail</label><input id="trocarEmailNovo" type="email" placeholder="novoemail@exemplo.com"></div>
@@ -3934,15 +3935,15 @@ function abrirModalTrocarEmail(){
     try{
       await window.__fbChangeEmail(senha, novoEmail);
       openModal(`
-        <h3 style="margin-top:0;">✅ E-mail alterado!</h3>
-        <div class="sub">A partir de agora, use <strong>${escapeHtml(novoEmail)}</strong> pra entrar no PerFit. Sua senha e todos os seus dados continuam os mesmos.</div>
+        <h3 style="margin-top:0;">📩 Confirme pelo e-mail</h3>
+        <div class="sub">Enviamos um link de confirmação para <strong>${escapeHtml(novoEmail)}</strong>. Abra essa caixa de entrada (e o spam) e clique no link — só depois disso o login passa a usar o novo e-mail. Sua senha e seus dados continuam os mesmos.</div>
         <div style="display:flex;justify-content:flex-end;margin-top:16px;">
           <button id="btnFecharTrocarEmailOk">Entendi</button>
         </div>
       `);
       const btnOk = document.getElementById('btnFecharTrocarEmailOk');
       if(btnOk) btnOk.onclick = closeModal;
-      showToast('E-mail alterado com sucesso.', 'success');
+      showToast('Link de confirmação enviado.', 'success');
     }catch(err){
       erroEl.textContent = traduzErroFirebase(err);
       erroEl.style.display = 'block';
@@ -4086,7 +4087,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail, updateEmail, reauthenticateWithCredential, EmailAuthProvider } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail, verifyBeforeUpdateEmail, reauthenticateWithCredential, EmailAuthProvider } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, serverTimestamp, collection, query, orderBy, limit, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -4110,8 +4111,7 @@ window.__fbChangeEmail = async (senhaAtual, novoEmail) => {
   if(!user) throw new Error('Nenhum usuário logado.');
   const cred = EmailAuthProvider.credential(user.email, senhaAtual);
   await reauthenticateWithCredential(user, cred);
-  await updateEmail(user, novoEmail);
-  await user.getIdToken(true);
+  await verifyBeforeUpdateEmail(user, novoEmail);
   return novoEmail;
 };
 
