@@ -326,7 +326,8 @@
     <div class="tab" data-tab="exercicios">🏋️ Banco de Exercícios</div>
     <div class="tab" data-tab="backup">💾 Backup</div>
     <div class="tab" data-tab="uso" id="navTabUso" style="display:none;">📊 Uso</div>
-    <div class="tab" id="navSair" style="margin-top:20px;border-top:1px solid var(--line);color:var(--muted);">🚪 Sair</div>
+    <div class="tab" id="navTrocarEmail" style="margin-top:20px;border-top:1px solid var(--line);color:var(--muted);">✉️ Trocar e-mail</div>
+    <div class="tab" id="navSair" style="color:var(--muted);">🚪 Sair</div>
     <div id="navUsuario" style="padding:10px 20px;font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 0 auto;max-width:220px;"></div>
     <div id="navTeste" style="padding:0 20px 10px;font-size:11px;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 0 auto;max-width:220px;"></div>
   </nav>
@@ -3898,8 +3899,57 @@ function traduzErroFirebase(err){
     'auth/too-many-requests':'Muitas tentativas seguidas. Aguarde um pouco e tente de novo.',
     'auth/network-request-failed':'Falha de conexão. Verifique sua internet e tente de novo.',
     'auth/missing-email':'Digite seu e-mail.',
+    'auth/requires-recent-login':'Por segurança, entre novamente antes de trocar o e-mail.',
   };
   return map[code] || 'Não foi possível entrar. Tente novamente.';
+}
+function abrirModalTrocarEmail(){
+  openModal(`
+    <h3 style="margin-top:0;">✉️ Trocar e-mail da conta</h3>
+    <div class="sub" style="margin-bottom:16px;">Isso troca o e-mail de login desta conta (seus dados e senha continuam os mesmos). Confirme sua senha atual pra prosseguir.</div>
+    <div id="trocarEmailErro" class="banner" style="display:none;border-color:var(--red);margin-bottom:14px;"></div>
+    <div class="field"><label>E-mail atual</label><input type="text" value="${escapeAttr((window.__fitproEmailAtual)||'')}" disabled></div>
+    <div class="field"><label>Novo e-mail</label><input id="trocarEmailNovo" type="email" placeholder="novoemail@exemplo.com"></div>
+    <div class="field"><label>Senha atual</label><input id="trocarEmailSenha" type="password" placeholder="Sua senha atual"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px;">
+      <button class="secondary" id="btnCancelarTrocarEmail">Cancelar</button>
+      <button id="btnConfirmarTrocarEmail">Trocar e-mail</button>
+    </div>
+  `);
+  const btnCancelar = document.getElementById('btnCancelarTrocarEmail');
+  if(btnCancelar) btnCancelar.onclick = closeModal;
+  const btnConfirmar = document.getElementById('btnConfirmarTrocarEmail');
+  if(btnConfirmar) btnConfirmar.onclick = async ()=>{
+    const novoEmail = (document.getElementById('trocarEmailNovo').value || '').trim();
+    const senha = document.getElementById('trocarEmailSenha').value || '';
+    const erroEl = document.getElementById('trocarEmailErro');
+    erroEl.style.display = 'none';
+    if(!novoEmail || !senha){
+      erroEl.textContent = 'Preencha o novo e-mail e a senha atual.';
+      erroEl.style.display = 'block';
+      return;
+    }
+    btnConfirmar.disabled = true;
+    btnConfirmar.textContent = 'Trocando...';
+    try{
+      await window.__fbChangeEmail(senha, novoEmail);
+      openModal(`
+        <h3 style="margin-top:0;">✅ E-mail alterado!</h3>
+        <div class="sub">A partir de agora, use <strong>${escapeHtml(novoEmail)}</strong> pra entrar no PerFit. Sua senha e todos os seus dados continuam os mesmos.</div>
+        <div style="display:flex;justify-content:flex-end;margin-top:16px;">
+          <button id="btnFecharTrocarEmailOk">Entendi</button>
+        </div>
+      `);
+      const btnOk = document.getElementById('btnFecharTrocarEmailOk');
+      if(btnOk) btnOk.onclick = closeModal;
+      showToast('E-mail alterado com sucesso.', 'success');
+    }catch(err){
+      erroEl.textContent = traduzErroFirebase(err);
+      erroEl.style.display = 'block';
+      btnConfirmar.disabled = false;
+      btnConfirmar.textContent = 'Trocar e-mail';
+    }
+  };
 }
 function renderLoginScreen(mensagem, emailPreenchido, tipoMensagem){
   window.scrollTo(0,0);
@@ -3971,6 +4021,7 @@ window.__fitproReady = function(cloudData, uid, email, licenca){
   if(navEl) navEl.style.display = '';
   const navUsuario = document.getElementById('navUsuario');
   if(navUsuario) navUsuario.textContent = email || '';
+  window.__fitproEmailAtual = email || '';
   const navTabUso = document.getElementById('navTabUso');
   if(navTabUso) navTabUso.style.display = (email === ADMIN_EMAIL) ? '' : 'none';
   const navTeste = document.getElementById('navTeste');
@@ -4027,13 +4078,15 @@ document.addEventListener('DOMContentLoaded', ()=>{
   if(navLogo) navLogo.src = appIconUrl();
   const navSair = document.getElementById('navSair');
   if(navSair) navSair.onclick = ()=>{ if(window.__fbSignOut) window.__fbSignOut(); };
+  const navTrocarEmail = document.getElementById('navTrocarEmail');
+  if(navTrocarEmail) navTrocarEmail.onclick = ()=> abrirModalTrocarEmail();
   const btnRecarregarConflito = document.getElementById('btnRecarregarConflito');
   if(btnRecarregarConflito) btnRecarregarConflito.onclick = ()=> window.location.reload();
 });
 </script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail, updateEmail, reauthenticateWithCredential, EmailAuthProvider } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, serverTimestamp, collection, query, orderBy, limit, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -4052,6 +4105,15 @@ const dbFire = getFirestore(fbApp);
 window.__fbSignIn = (email, senha) => signInWithEmailAndPassword(auth, email, senha);
 window.__fbSignOut = () => signOut(auth);
 window.__fbResetPassword = (email) => sendPasswordResetEmail(auth, email);
+window.__fbChangeEmail = async (senhaAtual, novoEmail) => {
+  const user = auth.currentUser;
+  if(!user) throw new Error('Nenhum usuário logado.');
+  const cred = EmailAuthProvider.credential(user.email, senhaAtual);
+  await reauthenticateWithCredential(user, cred);
+  await updateEmail(user, novoEmail);
+  await user.getIdToken(true);
+  return novoEmail;
+};
 
 // Fila de salvamentos: garante que cada salvamento na nuvem só comece depois do anterior terminar,
 // evitando que escritas concorrentes cheguem ao Firestore fora de ordem.
