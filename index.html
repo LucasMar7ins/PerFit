@@ -749,6 +749,95 @@ function statusPagamentoClass(status){
   return { em_dia:'green', pendente:'yellow', atrasado:'red', sem_config:'gray' }[status] || 'gray';
 }
 
+// ---------- RESUMO MENSAL AUTOMÁTICO ----------
+function mesAnterior(){
+  const d = new Date();
+  d.setDate(1);
+  d.setMonth(d.getMonth()-1);
+  return d.toISOString().slice(0,7);
+}
+function nomeMesPorExtenso(mes){
+  const partes = (mes||'').split('-');
+  if(partes.length!==2) return mes;
+  const idx = parseInt(partes[1],10)-1;
+  if(idx<0||idx>11) return mes;
+  return NOMES_MES[idx].toLowerCase();
+}
+function calcularResumoMensal(mesAlvo){
+  const alunosAtivos = db.students.filter(s=>(s.status||'ativo')==='ativo');
+  let receita = 0, emDia = 0;
+  alunosAtivos.forEach(s=>{
+    const r = (s.pagamentos||[]).find(p=>p.mes===mesAlvo);
+    if(r && r.status==='pago'){
+      emDia++;
+      const v = parseFloat(String(r.valor||'').replace(',','.'));
+      if(!isNaN(v)) receita += v;
+    }
+  });
+  const poucoTreino = alunosAtivos.filter(s=>{
+    const qtd = (s.presencas||[]).filter(p=>(p.data||'').startsWith(mesAlvo) && p.status==='compareceu').length;
+    return qtd < 2;
+  });
+  return {
+    alunosAtivos: alunosAtivos.length,
+    receita,
+    emDia,
+    atrasados: alunosAtivos.length - emDia,
+    poucoTreino
+  };
+}
+function verificarResumoMensal(){
+  if(!currentUid) return;
+  const mAtualStr = mesAtual();
+  const chave = 'perfitResumoMostrado_' + currentUid;
+  let ultimoMostrado = null;
+  try{ ultimoMostrado = localStorage.getItem(chave); }catch(e){}
+  if(ultimoMostrado === mAtualStr) return;
+  try{ localStorage.setItem(chave, mAtualStr); }catch(e){}
+  const alunosAtivos = db.students.filter(s=>(s.status||'ativo')==='ativo');
+  if(alunosAtivos.length===0) return;
+  abrirResumoMensal(mesAnterior());
+}
+function abrirResumoMensal(mesAlvo){
+  const r = calcularResumoMensal(mesAlvo);
+  const nomeMes = nomeMesPorExtenso(mesAlvo);
+  const receitaFormatada = r.receita.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  const poucoTreinoHtml = r.poucoTreino.length>0 ? `
+    <div class="banner noprint">
+      <i class="ti ti-clock"></i> ${r.poucoTreino.length} aluno(s) treinaram menos de 2 vezes em ${nomeMes}: ${r.poucoTreino.map(s=>escapeHtml(s.nome)).join(', ')}. Vale um contato pra saber se está tudo bem.
+    </div>` : '';
+  openModal(`
+    <h3 style="margin-top:0;"><i class="ti ti-chart-bar"></i> Resumo de ${nomeMes}</h3>
+    <div class="sub" style="margin-bottom:16px;">Como foi o mês, em números.</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+      <div style="background:var(--panel2);border-radius:10px;padding:12px;">
+        <div style="font-size:20px;font-weight:700;color:var(--accent2);">R$ ${receitaFormatada}</div>
+        <div style="font-size:11px;color:var(--muted);">receita recebida</div>
+      </div>
+      <div style="background:rgba(52,211,153,.15);border-radius:10px;padding:12px;">
+        <div style="font-size:20px;font-weight:700;color:var(--green);">${r.alunosAtivos}</div>
+        <div style="font-size:11px;color:var(--muted);">alunos ativos</div>
+      </div>
+    </div>
+    <div style="border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:13px;"><span><i class="ti ti-circle-check" style="color:var(--green);"></i> Pagamentos em dia</span><strong>${r.emDia} de ${r.alunosAtivos}</strong></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:13px;"><span><i class="ti ti-alert-triangle" style="color:var(--yellow);"></i> Pagamentos atrasados</span><strong>${r.atrasados}</strong></div>
+    </div>
+    ${poucoTreinoHtml}
+    <div class="actions" style="justify-content:flex-end;margin-top:16px;">
+      <button class="secondary" id="btnResumoFechar">Fechar</button>
+      <button id="btnResumoVerPagamentos">Ver Pagamentos</button>
+    </div>
+  `);
+  document.getElementById('btnResumoFechar').onclick = closeModal;
+  document.getElementById('btnResumoVerPagamentos').onclick = ()=>{
+    closeModal();
+    state.tab = 'pagamentos';
+    state.studentId = null;
+    render();
+  };
+}
+
 // ---------- MODELOS DE FICHA ----------
 const TEMPLATES_FICHA = {
   hipertrofia: {
@@ -4309,6 +4398,7 @@ window.__fitproReady = function(cloudData, uid, email, licenca){
     }
   }
   render();
+  verificarResumoMensal();
 };
 window.__showLogin = function(){
   currentUid = null;
