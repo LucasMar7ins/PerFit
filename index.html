@@ -62,6 +62,10 @@
   .printFooter{border-top:1px solid var(--line);padding:12px 24px;display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--muted);}
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
   input,select,textarea{background:var(--panel2);border:1px solid var(--line);color:var(--text);padding:9px 11px;border-radius:7px;font-size:14px;}
+  input[type="checkbox"],input[type="radio"]{accent-color:var(--accent);}
+  input[type="file"]{background:transparent;border:none;padding:0;color:var(--muted);}
+  input[type="file"]::file-selector-button{background:var(--accent);color:#fff;border:none;padding:8px 14px;border-radius:7px;font-weight:600;font-size:13px;cursor:pointer;margin-right:10px;}
+  input[type="file"]::file-selector-button:hover{filter:brightness(1.1);}
   input:focus,select:focus,textarea:focus{outline:1px solid var(--accent);}
   input::placeholder,textarea::placeholder{color:var(--muted);opacity:.65;font-style:italic;}
   textarea{width:100%;min-height:50px;font-family:inherit;}
@@ -2172,7 +2176,7 @@ function renderStudentDetail(id){
           </table>
           ${s.anamneseObservacoes ? `<div style="font-weight:600;margin-top:14px;margin-bottom:6px;">Observações gerais</div><div class="anamneseBox">${escapeHtml(s.anamneseObservacoes)}</div>` : ''}
         </div>
-      ` : '<div class="empty">Nenhuma anamnese preenchida ainda. Clique em "+ Preencher anamnese" para registrar o histórico de saúde e hábitos de vida do aluno.</div>'}
+      ` : '<div class="emptyState"><div class="emptyStateIcon">🩺</div><div class="emptyStateTitle">Nenhuma anamnese ainda</div><div class="emptyStateText">Registre o histórico de saúde e hábitos de vida do aluno pra ter mais segurança na prescrição.</div><button id="btnEmptyAnamnese">+ Preencher anamnese</button></div>'}
     </div>
 
     <div class="sectionTitle">
@@ -2198,7 +2202,7 @@ function renderStudentDetail(id){
     </div>
     ${(()=>{ const r = reavaliacaoStatus(s); if(!r || !r.atrasada) return ''; const msg = r.motivo==='nunca' ? 'Este aluno ainda não tem nenhuma avaliação física registrada.' : `Já se passaram ${r.dias} dias desde a última avaliação (limite recomendado: ${REAVAL_DIAS_LIMITE} dias).`; return `<div class="banner noprint">⏰ ${msg}</div>`; })()}
     <div class="collapsibleContent" style="display:${state.collapsedSections.avaliacoes?'none':'block'};">
-      ${avaliacoesHtml || '<div class="empty">Nenhuma avaliação registrada. Clique em "+ Nova avaliação" para lançar peso, altura, circunferências e anamnese inicial.</div>'}
+      ${avaliacoesHtml || '<div class="emptyState"><div class="emptyStateIcon">📋</div><div class="emptyStateTitle">Nenhuma avaliação ainda</div><div class="emptyStateText">Lance peso, altura, circunferências e anamnese inicial pra começar a acompanhar a evolução.</div><button id="btnEmptyAvaliacao">+ Nova avaliação</button></div>'}
     </div>
 
     <div class="sectionTitle">
@@ -2214,7 +2218,7 @@ function renderStudentDetail(id){
       <button class="secondary small noprint" id="btnNewCarga" style="margin-left:auto;">+ Registrar carga</button>
     </div>
     <div class="collapsibleContent" style="display:${state.collapsedSections.cargas?'none':'block'};">
-      ${cargaHtml || '<div class="empty">Nenhum registro de carga ainda. Use isso para acompanhar a evolução do aluno exercício a exercício.</div>'}
+      ${cargaHtml || '<div class="emptyState"><div class="emptyStateIcon">📈</div><div class="emptyStateTitle">Nenhum registro de carga ainda</div><div class="emptyStateText">Use isso pra acompanhar a evolução do aluno exercício a exercício.</div><button id="btnEmptyCarga">+ Registrar carga</button></div>'}
     </div>
   `;
 }
@@ -2600,9 +2604,13 @@ function bindEvents(){
 
   const btnEditAnamnese = document.getElementById('btnEditAnamnese');
   if(btnEditAnamnese) btnEditAnamnese.onclick = ()=> openAnamneseModal();
+  const btnEmptyAnamnese = document.getElementById('btnEmptyAnamnese');
+  if(btnEmptyAnamnese) btnEmptyAnamnese.onclick = ()=> openAnamneseModal();
 
   const btnNewAval = document.getElementById('btnNewAval');
   if(btnNewAval) btnNewAval.onclick = ()=> openAvaliacaoModal();
+  const btnEmptyAvaliacao = document.getElementById('btnEmptyAvaliacao');
+  if(btnEmptyAvaliacao) btnEmptyAvaliacao.onclick = ()=> openAvaliacaoModal();
   document.querySelectorAll('[data-edit-aval]').forEach(el=>{
     el.onclick = ()=>{
       const s = db.students.find(x=>x.id===state.studentId);
@@ -2635,6 +2643,8 @@ function bindEvents(){
 
   const btnNewCarga = document.getElementById('btnNewCarga');
   if(btnNewCarga) btnNewCarga.onclick = ()=> openCargaModal();
+  const btnEmptyCarga = document.getElementById('btnEmptyCarga');
+  if(btnEmptyCarga) btnEmptyCarga.onclick = ()=> openCargaModal();
   document.querySelectorAll('[data-edit-carga]').forEach(el=>{
     el.onclick = ()=>{
       const s = db.students.find(x=>x.id===state.studentId);
