@@ -22,7 +22,13 @@
   }
   *{box-sizing:border-box;}
   body{margin:0;font-family:'Segoe UI',Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);overflow-anchor:none;}
-  .ti{vertical-align:-2px;}
+  .ti{vertical-align:-2px;color:var(--accent);}
+  .tag i.ti{color:inherit;}
+  .banner i.ti{color:var(--yellow);}
+  .banner.danger i.ti{color:var(--red);}
+  button.danger i.ti{color:inherit;}
+  .printBadge i.ti{color:inherit;}
+  button[data-open-note] i.ti{color:inherit;}
   .app{display:flex;min-height:100vh;}
   nav{width:220px;background:var(--panel);border-right:1px solid var(--line);padding:20px 0;flex-shrink:0;overflow-anchor:none;}
   nav h1{font-size:18px;padding:0 20px 20px;margin:0;color:var(--accent);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;}
@@ -1583,9 +1589,9 @@ function openOcorrenciaModal(studentId, slotId, dataISO){
     <div class="meta" style="margin-bottom:14px;">${formatDate(dataISO)} às ${escapeHtml(slot.horario||'-')} ${slot.tipo==='unico'?'(horário único)':'(recorrente)'}</div>
     <div class="field"><label>Presença nesta data</label>
       <div class="row" style="gap:8px;flex-wrap:wrap;">
-        <button class="small" id="ocCompareceu" style="${statusAtual==='compareceu'?'background:var(--green);color:#fff;border-color:var(--green);':'background:var(--panel2);color:var(--text);border:1px solid var(--line);'}"><i class="ti ti-circle-check"></i> Compareceu</button>
-        <button class="small" id="ocFaltou" style="${statusAtual==='faltou'?'background:var(--red);color:#fff;border-color:var(--red);':'background:var(--panel2);color:var(--text);border:1px solid var(--line);'}"><i class="ti ti-circle-x"></i> Faltou</button>
-        <button class="small" id="ocReposicao" style="${statusAtual==='reposicao'?'background:var(--yellow);color:#fff;border-color:var(--yellow);':'background:var(--panel2);color:var(--text);border:1px solid var(--line);'}"><i class="ti ti-repeat"></i> Reposição</button>
+        <button class="small" id="ocCompareceu" style="${statusAtual==='compareceu'?'background:var(--green);color:#fff;border-color:var(--green);':'background:var(--panel2);color:var(--text);border:1px solid var(--line);'}"><i class="ti ti-circle-check" style="color:inherit;"></i> Compareceu</button>
+        <button class="small" id="ocFaltou" style="${statusAtual==='faltou'?'background:var(--red);color:#fff;border-color:var(--red);':'background:var(--panel2);color:var(--text);border:1px solid var(--line);'}"><i class="ti ti-circle-x" style="color:inherit;"></i> Faltou</button>
+        <button class="small" id="ocReposicao" style="${statusAtual==='reposicao'?'background:var(--yellow);color:#fff;border-color:var(--yellow);':'background:var(--panel2);color:var(--text);border:1px solid var(--line);'}"><i class="ti ti-repeat" style="color:inherit;"></i> Reposição</button>
         ${statusAtual ? `<button class="ghost small" id="ocLimpar">Limpar marcação</button>` : ''}
       </div>
     </div>
