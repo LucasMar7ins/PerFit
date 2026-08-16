@@ -22,6 +22,7 @@
   }
   *{box-sizing:border-box;}
   body{margin:0;font-family:'Segoe UI',Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);overflow-anchor:none;}
+  .ti{vertical-align:-2px;}
   .app{display:flex;min-height:100vh;}
   nav{width:220px;background:var(--panel);border-right:1px solid var(--line);padding:20px 0;flex-shrink:0;overflow-anchor:none;}
   nav h1{font-size:18px;padding:0 20px 20px;margin:0;color:var(--accent);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;}
@@ -314,20 +315,21 @@
     .printFooter{border-color:#eeeef2;color:#6b6b76;}
   }
 </style>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.17.0/dist/tabler-icons.min.css">
 </head>
 <body>
 <div class="app">
   <nav style="display:none;">
     <h1><img id="navLogo" class="navLogo" alt=""><span>Per<span>Fit</span></span></h1>
-    <div class="tab active" data-tab="inicio">🏠 Início</div>
-    <div class="tab" data-tab="alunos">👤 Alunos</div>
-    <div class="tab" data-tab="pagamentos">💳 Pagamentos</div>
-    <div class="tab" data-tab="agenda">🗓️ Agenda</div>
-    <div class="tab" data-tab="exercicios">🏋️ Banco de Exercícios</div>
-    <div class="tab" data-tab="backup">💾 Backup</div>
-    <div class="tab" data-tab="uso" id="navTabUso" style="display:none;">📊 Uso</div>
-    <div class="tab" id="navTrocarEmail" style="margin-top:20px;border-top:1px solid var(--line);color:var(--muted);">✉️ Trocar e-mail</div>
-    <div class="tab" id="navSair" style="color:var(--muted);">🚪 Sair</div>
+    <div class="tab active" data-tab="inicio"><i class="ti ti-home"></i> Início</div>
+    <div class="tab" data-tab="alunos"><i class="ti ti-users"></i> Alunos</div>
+    <div class="tab" data-tab="pagamentos"><i class="ti ti-credit-card"></i> Pagamentos</div>
+    <div class="tab" data-tab="agenda"><i class="ti ti-calendar"></i> Agenda</div>
+    <div class="tab" data-tab="exercicios"><i class="ti ti-barbell"></i> Banco de Exercícios</div>
+    <div class="tab" data-tab="backup"><i class="ti ti-device-floppy"></i> Backup</div>
+    <div class="tab" data-tab="uso" id="navTabUso" style="display:none;"><i class="ti ti-chart-bar"></i> Uso</div>
+    <div class="tab" id="navTrocarEmail" style="margin-top:20px;border-top:1px solid var(--line);color:var(--muted);"><i class="ti ti-mail"></i> Trocar e-mail</div>
+    <div class="tab" id="navSair" style="color:var(--muted);"><i class="ti ti-logout"></i> Sair</div>
     <div id="navUsuario" style="padding:10px 20px;font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 0 auto;max-width:220px;"></div>
     <div id="navTeste" style="padding:0 20px 10px;font-size:11px;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 0 auto;max-width:220px;"></div>
   </nav>
@@ -338,9 +340,9 @@
   <div class="modal" id="modalBody"></div>
 </div>
 <div class="toastContainer" id="toastContainer"></div>
-<div class="syncWarningBanner noprint" id="syncWarning">⚠️ Sem conexão com a nuvem — suas alterações estão sendo salvas só neste aparelho até a internet voltar.</div>
-<div class="conflitoAvisoBanner noprint" id="conflitoAviso">⚠️ Detectamos uma alteração feita em outro aparelho depois que você abriu este. Para não perder nada, recarregue a página.<button type="button" id="btnRecarregarConflito">Recarregar agora</button></div>
-<div class="savePill noprint" id="savePill"><span class="savingSpin" style="display:inline-block;"></span><span class="savePillCheck" style="display:none;">✓</span><span class="savePillText">Salvando...</span></div>
+<div class="syncWarningBanner noprint" id="syncWarning"><i class="ti ti-alert-triangle"></i> Sem conexão com a nuvem — suas alterações estão sendo salvas só neste aparelho até a internet voltar.</div>
+<div class="conflitoAvisoBanner noprint" id="conflitoAviso"><i class="ti ti-alert-triangle"></i> Detectamos uma alteração feita em outro aparelho depois que você abriu este. Para não perder nada, recarregue a página.<button type="button" id="btnRecarregarConflito">Recarregar agora</button></div>
+<div class="savePill noprint" id="savePill"><span class="savingSpin" style="display:inline-block;"></span><span class="savePillCheck" style="display:none;"><i class="ti ti-check"></i></span><span class="savePillText">Salvando...</span></div>
 
 <script>
 // ---------- DATA LAYER ----------
@@ -716,7 +718,7 @@ function statusPagamentoAluno(s){
 }
 
 function statusPagamentoLabel(status){
-  return { em_dia:'✅ Em dia', pendente:'🕒 Pendente', atrasado:'⚠️ Atrasado', sem_config:'⚙️ Não configurado' }[status] || status;
+  return { em_dia:'<i class="ti ti-circle-check"></i> Em dia', pendente:'<i class="ti ti-clock"></i> Pendente', atrasado:'<i class="ti ti-alert-triangle"></i> Atrasado', sem_config:'<i class="ti ti-settings"></i> Não configurado' }[status] || status;
 }
 function statusPagamentoClass(status){
   return { em_dia:'green', pendente:'yellow', atrasado:'red', sem_config:'gray' }[status] || 'gray';
@@ -839,10 +841,10 @@ async function carregarPainelUso(){
         <td>${escapeHtml(item.email || item.uid)}</td>
         <td>${statusPlanoLabel(item)}</td>
         <td>${formatDataHora(item.ultimoLogin)}</td>
-        <td>${formatDataHora(item.ultimaAtividade)} ${inativo ? `<span class="tag yellow">⚠️ ${dias}d sem uso</span>` : ''}</td>
+        <td>${formatDataHora(item.ultimaAtividade)} ${inativo ? `<span class="tag yellow"><i class="ti ti-alert-triangle"></i> ${dias}d sem uso</span>` : ''}</td>
         <td>${horas}h ${min}min <span style="color:var(--muted);font-size:11px;">(${qtdSessoes} sessão(ões))</span></td>
         <td style="color:${corTamanho};font-weight:600;">${pctTamanho}%</td>
-        <td>${precisaRenovar ? `<a href="${escapeAttr(linkEmailRenovacao(item))}" style="display:inline-block;text-decoration:none;background:var(--accent);color:#fff;padding:5px 12px;border-radius:7px;font-weight:600;font-size:12px;white-space:nowrap;">✉️ Gerar e-mail</a>` : ''}</td>
+        <td>${precisaRenovar ? `<a href="${escapeAttr(linkEmailRenovacao(item))}" style="display:inline-block;text-decoration:none;background:var(--accent);color:#fff;padding:5px 12px;border-radius:7px;font-weight:600;font-size:12px;white-space:nowrap;"><i class="ti ti-mail"></i> Gerar e-mail</a>` : ''}</td>
       </tr>`;
     }).join('');
     main.innerHTML = `
@@ -872,7 +874,7 @@ async function carregarPainelUso(){
           <tbody>${linhas || '<tr><td colspan="7" class="empty">Nenhum dado de uso ainda.</td></tr>'}</tbody>
         </table>
       </div>
-      <div class="meta" style="margin-top:10px;">💡 Contas que nunca fizeram login não aparecem aqui — pra ver essas, confira a lista de usuários direto no Firebase Console (aba Authentication).</div>
+      <div class="meta" style="margin-top:10px;"><i class="ti ti-bulb"></i> Contas que nunca fizeram login não aparecem aqui — pra ver essas, confira a lista de usuários direto no Firebase Console (aba Authentication).</div>
     `;
   } catch(e){
     console.error('Erro ao carregar painel de uso', e);
@@ -891,12 +893,12 @@ function renderFichaPrint(studentId, fichaId){
   const linhasExerciciosPrint = f.exercicios.map((e,idxEx)=>{
     const anteriorEx = f.exercicios[idxEx-1];
     const destacadoEx = e.encadeado || (anteriorEx && anteriorEx.encadeado);
-    return `<tr class="${destacadoEx?'printRowCombo':''}"><td>☐</td><td>${escapeHtml(e.nome)}${e.encadeado?' 🔗':''}</td><td>${escapeHtml(e.grupo||'-')}</td><td>${escapeHtml(e.series||'-')}</td><td>${escapeHtml(e.reps||'-')}</td><td>${escapeHtml(e.obs||'-')}</td><td>${escapeHtml(e.descanso||'-')}</td><td>${escapeHtml(e.metodo||'-')}</td><td>${formatVolume(calcularVolumeExercicio(e))}</td></tr>`;
+    return `<tr class="${destacadoEx?'printRowCombo':''}"><td>☐</td><td>${escapeHtml(e.nome)}${e.encadeado?' <i class="ti ti-link"></i>':''}</td><td>${escapeHtml(e.grupo||'-')}</td><td>${escapeHtml(e.series||'-')}</td><td>${escapeHtml(e.reps||'-')}</td><td>${escapeHtml(e.obs||'-')}</td><td>${escapeHtml(e.descanso||'-')}</td><td>${escapeHtml(e.metodo||'-')}</td><td>${formatVolume(calcularVolumeExercicio(e))}</td></tr>`;
   }).join('');
   return `
     <span class="backBtn noprint" id="backFromPrint">&larr; Voltar para o aluno</span>
     <div class="row noprint" style="margin-bottom:16px;">
-      <button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
+      <button onclick="window.print()"><i class="ti ti-printer"></i> Imprimir / Salvar PDF</button>
     </div>
     <div class="printDoc" style="max-width:760px;">
       <div class="printHeader">
@@ -939,7 +941,7 @@ function renderReciboPrint(studentId, registroId){
   return `
     <span class="backBtn noprint" id="backFromRecibo">&larr; Voltar para Pagamentos</span>
     <div class="row noprint" style="margin-bottom:16px;">
-      <button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
+      <button onclick="window.print()"><i class="ti ti-printer"></i> Imprimir / Salvar PDF</button>
     </div>
     <div class="printDoc" style="max-width:560px;">
       <div class="printHeader">
@@ -950,7 +952,7 @@ function renderReciboPrint(studentId, registroId){
         <h2>Recibo de Pagamento</h2>
         <div class="printBadges">
           <span class="printBadge">${escapeHtml(s.nome)}</span>
-          <span class="printBadge">${r.status==='pago'?'✅ Pago':'🕒 Pendente'}</span>
+          <span class="printBadge">${r.status==='pago'?'<i class="ti ti-circle-check"></i> Pago':'<i class="ti ti-clock"></i> Pendente'}</span>
         </div>
         <table>
           <tbody>
@@ -984,7 +986,7 @@ function renderAvaliacaoPrint(studentId, avaliacaoId){
   return `
     <span class="backBtn noprint" id="backFromAvaliacao">&larr; Voltar para o aluno</span>
     <div class="row noprint" style="margin-bottom:16px;">
-      <button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
+      <button onclick="window.print()"><i class="ti ti-printer"></i> Imprimir / Salvar PDF</button>
     </div>
     <div class="printDoc" style="max-width:560px;">
       <div class="printHeader">
@@ -1055,10 +1057,10 @@ function renderTreinoAoVivo(studentId, fichaId){
         <div class="liveCard ${e.feito?'liveCardFeito':''}" style="${destacadoEx?'background:var(--panel2);border-left:3px solid var(--accent);':''}">
           <div class="liveCardTop">
             <div>
-              <div class="liveExNome">${escapeHtml(e.nome)}${e.encadeado?' 🔗':''}</div>
-              <div class="liveExGrupo">${escapeHtml(e.grupo||'-')}${e.metodo?(' • '+escapeHtml(e.metodo)):''}${e.video?` • <a href="${escapeAttr(e.video)}" target="_blank" rel="noopener">🎥 Vídeo</a>`:''}</div>
+              <div class="liveExNome">${escapeHtml(e.nome)}${e.encadeado?' <i class="ti ti-link"></i>':''}</div>
+              <div class="liveExGrupo">${escapeHtml(e.grupo||'-')}${e.metodo?(' • '+escapeHtml(e.metodo)):''}${e.video?` • <a href="${escapeAttr(e.video)}" target="_blank" rel="noopener"><i class="ti ti-video"></i> Vídeo</a>`:''}</div>
             </div>
-            <button class="liveCheckBtn ${e.feito?'liveCheckBtnOn':''}" data-live-toggle="${f.id}|${e.id}" title="Marcar como feito">${e.feito?'✅':'○'}</button>
+            <button class="liveCheckBtn ${e.feito?'liveCheckBtnOn':''}" data-live-toggle="${f.id}|${e.id}" title="Marcar como feito">${e.feito?'<i class="ti ti-circle-check"></i>':'<i class="ti ti-circle"></i>'}</button>
           </div>
           <div class="liveFieldsRow">
             <div class="liveField"><label>Séries</label><input class="liveInput" data-live-field="${f.id}|${e.id}|series" value="${escapeAttr(e.series||'')}" placeholder="-"></div>
@@ -1066,7 +1068,7 @@ function renderTreinoAoVivo(studentId, fichaId){
             <div class="liveField"><label>Carga</label><input class="liveInput" data-live-field="${f.id}|${e.id}|obs" value="${escapeAttr(e.obs||'')}" placeholder="-"></div>
             <div class="liveField"><label>Descanso</label><input class="liveInput" data-live-field="${f.id}|${e.id}|descanso" value="${escapeAttr(e.descanso||'')}" placeholder="-"></div>
           </div>
-          <button class="ghost small" data-open-note="${f.id}|${e.id}" style="${e.notas?'border-color:var(--yellow);color:var(--yellow);':''}">${e.notas?'📝 Ver observação':'📝 Observação'}</button>
+          <button class="ghost small" data-open-note="${f.id}|${e.id}" style="${e.notas?'border-color:var(--yellow);color:var(--yellow);':''}">${e.notas?'<i class="ti ti-note"></i> Ver observação':'<i class="ti ti-note"></i> Observação'}</button>
         </div>
       `;
   }).join('');
@@ -1076,7 +1078,7 @@ function renderTreinoAoVivo(studentId, fichaId){
         <div class="liveAlunoNome">${escapeHtml(s.nome)}</div>
         <div class="liveFichaNome">${escapeHtml(f.nome||('Treino '+f.letra))} • Treino ${escapeHtml(f.letra)}</div>
       </div>
-      <button class="secondary" id="sairTreinoAoVivo">✕ Sair</button>
+      <button class="secondary" id="sairTreinoAoVivo"><i class="ti ti-x"></i> Sair</button>
     </div>
     <div class="liveProgressWrap">
       <div class="liveProgressBar"><div class="liveProgressFill" style="width:${pct}%;"></div></div>
@@ -1101,7 +1103,7 @@ function studentCardHtml(s){
         <h3 style="margin:0 0 4px;">${escapeHtml(s.nome)}</h3>
         <div class="row" style="gap:4px;">
           ${status==='pausado' ? '<span class="tag gray">PAUSADO</span>' : ''}
-          ${reaval && reaval.atrasada ? '<span class="tag yellow">⏰ Reavaliação</span>' : ''}
+          ${reaval && reaval.atrasada ? '<span class="tag yellow"><i class="ti ti-alert-triangle"></i> Reavaliação</span>' : ''}
         </div>
       </div>
       <div class="meta">${escapeHtml(s.objetivo||'Sem objetivo definido')}</div>
@@ -1151,18 +1153,18 @@ function renderStudentsList(){
     <div class="row noprint" style="margin-bottom:18px;">
       <button id="btnAddStudent">+ Novo aluno</button>
     </div>
-    ${atrasadosCount>0 ? `<div class="banner noprint">⏰ <strong>${atrasadosCount} aluno(s)</strong> estão há mais de ${REAVAL_DIAS_LIMITE} dias sem reavaliação física (ou nunca avaliados). <span style="text-decoration:underline;cursor:pointer;" id="bannerVerAtrasados">Ver quem são</span></div>` : ''}
-    ${(()=>{ const b = backupStatus(); if(!b.atrasado) return ''; const msg = b.nunca ? 'Você ainda não exportou nenhum backup dos dados.' : `Já se passaram ${b.dias} dias desde o último backup exportado.`; return `<div class="banner danger noprint">💾 ${msg} <span style="text-decoration:underline;cursor:pointer;" id="bannerIrBackup">Ir para Backup</span></div>`; })()}
-    ${(db.lixeiraAlunos||[]).length>0 ? `<div class="banner noprint">🗑️ <strong>${db.lixeiraAlunos.length} aluno(s)</strong> na lixeira, ainda podem ser restaurados. <span style="text-decoration:underline;cursor:pointer;" id="bannerVerLixeira">Ver lixeira</span></div>` : ''}
+    ${atrasadosCount>0 ? `<div class="banner noprint"><i class="ti ti-alert-triangle"></i> <strong>${atrasadosCount} aluno(s)</strong> estão há mais de ${REAVAL_DIAS_LIMITE} dias sem reavaliação física (ou nunca avaliados). <span style="text-decoration:underline;cursor:pointer;" id="bannerVerAtrasados">Ver quem são</span></div>` : ''}
+    ${(()=>{ const b = backupStatus(); if(!b.atrasado) return ''; const msg = b.nunca ? 'Você ainda não exportou nenhum backup dos dados.' : `Já se passaram ${b.dias} dias desde o último backup exportado.`; return `<div class="banner danger noprint"><i class="ti ti-device-floppy"></i> ${msg} <span style="text-decoration:underline;cursor:pointer;" id="bannerIrBackup">Ir para Backup</span></div>`; })()}
+    ${(db.lixeiraAlunos||[]).length>0 ? `<div class="banner noprint"><i class="ti ti-trash"></i> <strong>${db.lixeiraAlunos.length} aluno(s)</strong> na lixeira, ainda podem ser restaurados. <span style="text-decoration:underline;cursor:pointer;" id="bannerVerLixeira">Ver lixeira</span></div>` : ''}
     <div class="card noprint" style="margin-bottom:16px;">
       <div class="field" style="margin-bottom:0;">
-        <label>🔎 Buscar aluno</label>
+        <label><i class="ti ti-search"></i> Buscar aluno</label>
         <input id="studentSearchInput" placeholder="Digite o nome ou objetivo do aluno..." value="${escapeAttr(state.studentSearch||'')}">
       </div>
       <div class="row" style="margin-top:12px;">
         <button class="${filtro==='ativos'?'':'secondary'} small" id="btnFiltroAtivos">Ativos</button>
         <button class="${filtro==='todos'?'':'secondary'} small" id="btnFiltroTodos">Todos${pausadosCount?' ('+pausadosCount+' pausado(s))':''}</button>
-        <button class="${filtro==='atrasados'?'':'secondary'} small" id="btnFiltroAtrasados">⏰ Reavaliação atrasada${atrasadosCount?' ('+atrasadosCount+')':''}</button>
+        <button class="${filtro==='atrasados'?'':'secondary'} small" id="btnFiltroAtrasados"><i class="ti ti-alert-triangle"></i> Reavaliação atrasada${atrasadosCount?' ('+atrasadosCount+')':''}</button>
       </div>
       <div class="meta" id="studentCountLabel" style="margin-top:10px;">${filteredStudents().length} de ${db.students.length} aluno(s)</div>
     </div>
@@ -1188,7 +1190,7 @@ function renderPagamentos(){
         <td>${cfg.metodo ? escapeHtml(cfg.metodo) : '-'}</td>
         <td class="noprint">
           <button class="secondary small" data-manage-pagamento="${s.id}">Gerenciar</button>
-          ${linkCobranca ? `<a href="${linkCobranca}" target="_blank" rel="noopener" class="ghost small" style="display:inline-block;padding:5px 10px;font-size:12px;border:1px solid var(--accent);color:var(--accent);border-radius:7px;text-decoration:none;margin-left:4px;">💬 Cobrar</a>` : ''}
+          ${linkCobranca ? `<a href="${linkCobranca}" target="_blank" rel="noopener" class="ghost small" style="display:inline-block;padding:5px 10px;font-size:12px;border:1px solid var(--accent);color:var(--accent);border-radius:7px;text-decoration:none;margin-left:4px;"><i class="ti ti-brand-whatsapp"></i> Cobrar</a>` : ''}
         </td>
       </tr>`;
   }).join('');
@@ -1204,12 +1206,12 @@ function renderPagamentos(){
     <h2>Pagamentos</h2>
     <div class="sub">Controle de mensalidade dos alunos: status, método de pagamento e nota fiscal.</div>
     <div class="row" style="margin-bottom:16px;gap:10px;">
-      <span class="tag green">✅ ${emDia} em dia</span>
-      <span class="tag yellow">🕒 ${pendentes} pendente(s)</span>
-      <span class="tag red">⚠️ ${atrasados} atrasado(s)</span>
-      <span class="tag gray" style="margin-left:auto;" title="Soma da mensalidade configurada de todos os alunos ativos — o teto do mês, se todos pagarem em dia.">💰 Receita mensal estimada: R$ ${receitaFormatada}</span>
+      <span class="tag green"><i class="ti ti-circle-check"></i> ${emDia} em dia</span>
+      <span class="tag yellow"><i class="ti ti-clock"></i> ${pendentes} pendente(s)</span>
+      <span class="tag red"><i class="ti ti-alert-triangle"></i> ${atrasados} atrasado(s)</span>
+      <span class="tag gray" style="margin-left:auto;" title="Soma da mensalidade configurada de todos os alunos ativos — o teto do mês, se todos pagarem em dia."><i class="ti ti-currency-dollar"></i> Receita mensal estimada: R$ ${receitaFormatada}</span>
     </div>
-    ${atrasados>0 ? `<div class="banner noprint">⚠️ <strong>${atrasados} aluno(s)</strong> com pagamento atrasado este mês.</div>` : ''}
+    ${atrasados>0 ? `<div class="banner noprint"><i class="ti ti-alert-triangle"></i> <strong>${atrasados} aluno(s)</strong> com pagamento atrasado este mês.</div>` : ''}
     <div class="card" style="overflow-x:auto;">
       <table>
         <thead><tr><th>Aluno</th><th>Status (${formatMes(mesAtual())})</th><th>Vencimento</th><th>Mensalidade</th><th>Método</th><th class="noprint"></th></tr></thead>
@@ -1247,7 +1249,7 @@ function renderInicio(){
           <span>${escapeHtml(a.aluno.nome)}</span>
           <span style="display:flex;align-items:center;gap:8px;">
             <span style="color:var(--accent);font-weight:600;">${escapeHtml(a.horario||'-')}</span>
-            ${linkLembrete ? `<a href="${linkLembrete}" target="_blank" rel="noopener" data-agenda-lembrete title="Lembrar treino no WhatsApp" style="text-decoration:none;">💬</a>` : ''}
+            ${linkLembrete ? `<a href="${linkLembrete}" target="_blank" rel="noopener" data-agenda-lembrete title="Lembrar treino no WhatsApp" style="text-decoration:none;"><i class="ti ti-brand-whatsapp"></i></a>` : ''}
           </span>
         </div>`;
       }).join('')
@@ -1255,24 +1257,24 @@ function renderInicio(){
 
   const listaAtrasados = atrasados.length
     ? atrasados.map(a=>`<div class="dashListRow" data-inicio-tab="pagamentos"><span>${escapeHtml(a.aluno.nome)}</span><span class="tag red">${a.dias!=null ? a.dias+' dia(s)' : 'atrasado'}</span></div>`).join('')
-    : `<div class="empty" style="padding:14px 0;">Nenhum pagamento atrasado. 🎉</div>`;
+    : `<div class="empty" style="padding:14px 0;">Nenhum pagamento atrasado. <i class="ti ti-confetti"></i></div>`;
 
   return `
     <h2>Início</h2>
     <div class="sub" style="text-transform:capitalize;">${escapeHtml(hojeFormatado)}</div>
     <div class="dashGrid">
       <div class="dashCard" data-inicio-tab="agenda">
-        <div class="dashCardIcon">🗓️</div>
+        <div class="dashCardIcon"><i class="ti ti-calendar"></i></div>
         <div class="dashCardValue">${agendaHoje.length}</div>
         <div class="dashCardLabel">Aluno(s) hoje</div>
       </div>
       <div class="dashCard danger" data-inicio-tab="pagamentos">
-        <div class="dashCardIcon">⚠️</div>
+        <div class="dashCardIcon"><i class="ti ti-alert-triangle"></i></div>
         <div class="dashCardValue">${atrasados.length}</div>
         <div class="dashCardLabel">Pagamento(s) atrasado(s)</div>
       </div>
       <div class="dashCard warning" data-inicio-tab="alunos">
-        <div class="dashCardIcon">📋</div>
+        <div class="dashCardIcon"><i class="ti ti-clipboard-list"></i></div>
         <div class="dashCardValue">${reavaliacoesPendentes.length}</div>
         <div class="dashCardLabel">Reavaliação pendente</div>
       </div>
@@ -1348,7 +1350,7 @@ function setPresenca(s, slotId, dataISO, status){
   if(existente){ existente.status = status; }
   else { s.presencas.push({slotId, data:dataISO, status}); }
 }
-const PRESENCA_LABEL = { compareceu:'✅ Compareceu', faltou:'❌ Faltou', reposicao:'🔁 Reposição' };
+const PRESENCA_LABEL = { compareceu:'<i class="ti ti-circle-check"></i> Compareceu', faltou:'<i class="ti ti-circle-x"></i> Faltou', reposicao:'<i class="ti ti-repeat"></i> Reposição' };
 
 const NOMES_MES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const DIAS_SEMANA_ORDEM = ['seg','ter','qua','qui','sex','sab','dom'];
@@ -1423,7 +1425,7 @@ function encontrarConflitos({dia, data, tipo, horarioInicio, horarioFim, excluir
 }
 function descreverConflito(item){
   if(item._tipoItem==='bloqueio'){
-    return `🚫 ${item.titulo||'Indisponível'} (${item.horarioInicio}${item.horarioFim?'–'+item.horarioFim:''})`;
+    return `<i class="ti ti-ban"></i> ${item.titulo||'Indisponível'} (${item.horarioInicio}${item.horarioFim?'–'+item.horarioFim:''})`;
   }
   return `${item.aluno.nome} (${item.horario})`;
 }
@@ -1439,9 +1441,9 @@ function slotChipHtml(a, dataISO){
     <div class="agendaSlot${statusClass}" data-agenda-ocorrencia="${a.aluno.id}|${a.id}|${dataISO}" title="Clique para marcar presença ou editar">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:4px;">
         <span><span class="hora">${escapeHtml(a.horario||'-')}</span> ${escapeHtml(a.aluno.nome)}</span>
-        ${linkLembrete ? `<a href="${linkLembrete}" target="_blank" rel="noopener" class="noprint" data-agenda-lembrete title="Lembrar treino no WhatsApp" style="text-decoration:none;flex-shrink:0;">💬</a>` : ''}
+        ${linkLembrete ? `<a href="${linkLembrete}" target="_blank" rel="noopener" class="noprint" data-agenda-lembrete title="Lembrar treino no WhatsApp" style="text-decoration:none;flex-shrink:0;"><i class="ti ti-brand-whatsapp"></i></a>` : ''}
       </div>
-      ${fichaDoDia ? `<div style="opacity:.85;">🏋️ Ficha ${escapeHtml(fichaDoDia.letra)}</div>` : ''}
+      ${fichaDoDia ? `<div style="opacity:.85;"><i class="ti ti-barbell"></i> Ficha ${escapeHtml(fichaDoDia.letra)}</div>` : ''}
       ${a.tipo==='unico' ? `<div style="opacity:.75;">única</div>` : ''}
     </div>
   `;
@@ -1450,7 +1452,7 @@ function slotChipHtml(a, dataISO){
 function bloqueioChipHtml(b){
   return `
     <div class="agendaSlot agendaSlot-bloqueio" data-bloqueio="${b.id}" title="Clique para editar ou remover este bloqueio">
-      <span class="hora">${escapeHtml(b.horarioInicio||'-')}${b.horarioFim?'–'+escapeHtml(b.horarioFim):''}</span> 🚫 ${escapeHtml(b.titulo||'Indisponível')}
+      <span class="hora">${escapeHtml(b.horarioInicio||'-')}${b.horarioFim?'–'+escapeHtml(b.horarioFim):''}</span> <i class="ti ti-ban"></i> ${escapeHtml(b.titulo||'Indisponível')}
     </div>
   `;
 }
@@ -1544,7 +1546,7 @@ function renderAgenda(){
   }
 
   return `
-    <h2>🗓️ Agenda</h2>
+    <h2><i class="ti ti-calendar"></i> Agenda</h2>
     <div class="sub">Calendário com os horários de treino de cada aluno.</div>
     <div class="row noprint" style="margin-bottom:14px;align-items:center;flex-wrap:wrap;">
       <button class="secondary small" id="agPrev">&larr;</button>
@@ -1556,7 +1558,7 @@ function renderAgenda(){
         <option value="semana" ${state.agendaView==='semana'?'selected':''}>Semana</option>
         <option value="mes" ${state.agendaView==='mes'?'selected':''}>Mês</option>
       </select>
-      <button class="secondary" id="btnNovoBloqueio" style="margin-left:auto;">🚫 Bloquear horário</button>
+      <button class="secondary" id="btnNovoBloqueio" style="margin-left:auto;"><i class="ti ti-ban"></i> Bloquear horário</button>
       <button id="btnNovoHorario">+ Adicionar horário</button>
     </div>
     <div class="row noprint" style="margin-bottom:14px;gap:16px;font-size:12px;color:var(--muted);align-items:center;flex-wrap:wrap;">
@@ -1581,9 +1583,9 @@ function openOcorrenciaModal(studentId, slotId, dataISO){
     <div class="meta" style="margin-bottom:14px;">${formatDate(dataISO)} às ${escapeHtml(slot.horario||'-')} ${slot.tipo==='unico'?'(horário único)':'(recorrente)'}</div>
     <div class="field"><label>Presença nesta data</label>
       <div class="row" style="gap:8px;flex-wrap:wrap;">
-        <button class="small" id="ocCompareceu" style="${statusAtual==='compareceu'?'background:var(--green);color:#fff;border-color:var(--green);':'background:var(--panel2);color:var(--text);border:1px solid var(--line);'}">✅ Compareceu</button>
-        <button class="small" id="ocFaltou" style="${statusAtual==='faltou'?'background:var(--red);color:#fff;border-color:var(--red);':'background:var(--panel2);color:var(--text);border:1px solid var(--line);'}">❌ Faltou</button>
-        <button class="small" id="ocReposicao" style="${statusAtual==='reposicao'?'background:var(--yellow);color:#fff;border-color:var(--yellow);':'background:var(--panel2);color:var(--text);border:1px solid var(--line);'}">🔁 Reposição</button>
+        <button class="small" id="ocCompareceu" style="${statusAtual==='compareceu'?'background:var(--green);color:#fff;border-color:var(--green);':'background:var(--panel2);color:var(--text);border:1px solid var(--line);'}"><i class="ti ti-circle-check"></i> Compareceu</button>
+        <button class="small" id="ocFaltou" style="${statusAtual==='faltou'?'background:var(--red);color:#fff;border-color:var(--red);':'background:var(--panel2);color:var(--text);border:1px solid var(--line);'}"><i class="ti ti-circle-x"></i> Faltou</button>
+        <button class="small" id="ocReposicao" style="${statusAtual==='reposicao'?'background:var(--yellow);color:#fff;border-color:var(--yellow);':'background:var(--panel2);color:var(--text);border:1px solid var(--line);'}"><i class="ti ti-repeat"></i> Reposição</button>
         ${statusAtual ? `<button class="ghost small" id="ocLimpar">Limpar marcação</button>` : ''}
       </div>
     </div>
@@ -1615,8 +1617,8 @@ function openBloqueioModal(bloqueioId, presetData){
     <div class="field"><label>Título</label><input id="blTitulo" value="${editing?escapeAttr(bloqueio.titulo||''):''}" placeholder="Ex: Almoço, Compromisso pessoal"></div>
     <div class="field"><label>Repetição</label>
       <select id="blTipo">
-        <option value="recorrente" ${tipoAtual==='recorrente'?'selected':''}>🔁 Toda semana (recorrente)</option>
-        <option value="unico" ${tipoAtual==='unico'?'selected':''}>📅 Só uma vez (data específica)</option>
+        <option value="recorrente" ${tipoAtual==='recorrente'?'selected':''}><i class="ti ti-repeat"></i> Toda semana (recorrente)</option>
+        <option value="unico" ${tipoAtual==='unico'?'selected':''}><i class="ti ti-calendar-event"></i> Só uma vez (data específica)</option>
       </select>
     </div>
     <div class="row">
@@ -1713,8 +1715,8 @@ function openAgendaSlotModal(studentId, slotId, presetData){
     </div>
     <div class="field"><label>Repetição</label>
       <select id="agTipo">
-        <option value="recorrente" ${tipoAtual==='recorrente'?'selected':''}>🔁 Toda semana (recorrente)</option>
-        <option value="unico" ${tipoAtual==='unico'?'selected':''}>📅 Só uma vez (data específica)</option>
+        <option value="recorrente" ${tipoAtual==='recorrente'?'selected':''}><i class="ti ti-repeat"></i> Toda semana (recorrente)</option>
+        <option value="unico" ${tipoAtual==='unico'?'selected':''}><i class="ti ti-calendar-event"></i> Só uma vez (data específica)</option>
       </select>
     </div>
     <div class="row">
@@ -1843,7 +1845,7 @@ function buildComparisonTable(avaliacoesAsc){
   if(!rows) return '';
   return `
     <div class="card" style="overflow-x:auto;">
-      <div style="font-weight:600;margin-bottom:10px;">📏 Tabela comparativa de medidas</div>
+      <div style="font-weight:600;margin-bottom:10px;"><i class="ti ti-ruler"></i> Tabela comparativa de medidas</div>
       <table style="min-width:${360+comAlgumDado.length*90}px;">
         <thead><tr><th>Parâmetros</th>${comAlgumDado.map(av=>`<th style="text-align:center;">${formatDate(av.data)}</th>`).join('')}</tr></thead>
         <tbody>${rows}</tbody>
@@ -1938,7 +1940,7 @@ function buildPlanejamentoHtml(s){
   return `
     <div class="card noprint" style="margin-bottom:18px;">
       <div class="row" style="justify-content:space-between;margin-bottom:10px;">
-        <strong style="font-size:13px;">📅 Planejamento semanal</strong>
+        <strong style="font-size:13px;"><i class="ti ti-calendar-event"></i> Planejamento semanal</strong>
         <button class="ghost small" id="btnAddSemanaPlanejamento">+ Adicionar semana</button>
       </div>
       <div style="display:flex;flex-direction:column;gap:8px;">${semanasHtml}</div>
@@ -2027,7 +2029,7 @@ function renderStudentDetail(id){
           ` : ''}
         </div>
         <div class="row noprint" style="flex-direction:column;align-items:stretch;gap:6px;">
-          <button class="ghost small" data-print-aval="${av.id}">🖨️ Imprimir</button>
+          <button class="ghost small" data-print-aval="${av.id}"><i class="ti ti-printer"></i> Imprimir</button>
           <button class="secondary small" data-edit-aval="${av.id}">Editar</button>
           <button class="danger small" data-del-aval="${av.id}">Excluir</button>
         </div>
@@ -2062,7 +2064,7 @@ function renderStudentDetail(id){
         <td>${escapeHtml(e.obs||'-')}</td>
         <td class="noprint">
           <button class="secondary small" data-edit-carga="${e.id}">Editar</button>
-          <button class="danger small" data-del-carga="${e.id}">✕</button>
+          <button class="danger small" data-del-carga="${e.id}"><i class="ti ti-x"></i></button>
         </td>
       </tr>
     `).join('');
@@ -2093,7 +2095,7 @@ function renderStudentDetail(id){
       const destacadoEx = e.encadeado || (anteriorEx && anteriorEx.encadeado);
       return `<tr style="${destacadoEx?'background:var(--panel2);border-left:3px solid var(--accent);':''}">
             <td class="noprint"><input type="checkbox" data-toggle-exec="${f.id}|${e.id}" ${e.feito?'checked':''} style="width:18px;height:18px;cursor:pointer;"></td>
-            <td style="${e.feito?'text-decoration:line-through;color:var(--muted);':''}">${escapeHtml(e.nome)} ${e.video?`<a href="${escapeAttr(e.video)}" target="_blank" rel="noopener" class="noprint" title="Ver vídeo de execução" style="text-decoration:none;">🎥</a>`:''}</td>
+            <td style="${e.feito?'text-decoration:line-through;color:var(--muted);':''}">${escapeHtml(e.nome)} ${e.video?`<a href="${escapeAttr(e.video)}" target="_blank" rel="noopener" class="noprint" title="Ver vídeo de execução" style="text-decoration:none;"><i class="ti ti-video"></i></a>`:''}</td>
             <td>${escapeHtml(e.grupo||'-')}</td>
             <td><input class="inlineEdit noprint-border" data-field-exec="${f.id}|${e.id}|series" value="${escapeAttr(e.series||'')}" placeholder="-"></td>
             <td><input class="inlineEdit noprint-border" data-field-exec="${f.id}|${e.id}|reps" value="${escapeAttr(e.reps||'')}" placeholder="-"></td>
@@ -2103,7 +2105,7 @@ function renderStudentDetail(id){
             <td class="noprint"><input type="checkbox" data-toggle-encadeado="${f.id}|${e.id}" ${e.encadeado?'checked':''} title="Encadear com o próximo (sem descanso)" style="width:18px;height:18px;cursor:pointer;"></td>
             <td id="vol-${f.id}-${e.id}" style="color:var(--muted);">${formatVolume(calcularVolumeExercicio(e))}</td>
             <td>
-              <button type="button" class="secondary small noprint" data-open-note="${f.id}|${e.id}" style="${e.notas?'border-color:var(--yellow);color:var(--yellow);':''}">${e.notas?'📝 Ver observação':'📝 Observação'}</button>
+              <button type="button" class="secondary small noprint" data-open-note="${f.id}|${e.id}" style="${e.notas?'border-color:var(--yellow);color:var(--yellow);':''}">${e.notas?'<i class="ti ti-note"></i> Ver observação':'<i class="ti ti-note"></i> Observação'}</button>
               <span class="onlyPrint">${escapeHtml(e.notas||'-')}</span>
             </td>
           </tr>`;
@@ -2119,18 +2121,18 @@ function renderStudentDetail(id){
           </div>
           <span class="tag ${f.ativa?'green':'gray'}">${f.ativa?'ATIVA':'ARQUIVADA'}</span>
           <span class="tag ${feitos===total && total>0 ?'green':'gray'}">${feitos}/${total} concluído(s)</span>
-          <span class="tag gray" id="volTotal-${f.id}">🏋️ Volume: ${formatVolume(volumeTotalFicha(f))}kg</span>
-          ${ehFichaDeHoje ? `<span class="tag" style="background:var(--accent);color:#fff;">📅 Ficha de hoje</span>` : ''}
+          <span class="tag gray" id="volTotal-${f.id}"><i class="ti ti-barbell"></i> Volume: ${formatVolume(volumeTotalFicha(f))}kg</span>
+          ${ehFichaDeHoje ? `<span class="tag" style="background:var(--accent);color:#fff;"><i class="ti ti-calendar-event"></i> Ficha de hoje</span>` : ''}
         </div>
         <div class="row noprint">
-          ${f.ativa ? `<button class="small" data-live-start="${f.id}">▶️ Iniciar treino</button>` : ''}
+          ${f.ativa ? `<button class="small" data-live-start="${f.id}"><i class="ti ti-player-play"></i> Iniciar treino</button>` : ''}
           ${(feitos===total && total>0) ? `<button class="small" style="background:var(--green);" data-resumo-treino="${f.id}">Enviar resumo pro aluno</button>` : ''}
           <button class="secondary small" data-edit-ficha="${f.id}">Editar</button>
           <button class="ghost small" data-duplicate-ficha="${f.id}">Duplicar / Alternar</button>
-          ${s.fichas.length>1 ? `<button class="ghost small" data-compare-ficha="${f.id}">🔀 Comparar</button>` : ''}
+          ${s.fichas.length>1 ? `<button class="ghost small" data-compare-ficha="${f.id}"><i class="ti ti-arrows-shuffle"></i> Comparar</button>` : ''}
           <button class="secondary small" data-toggle-ficha="${f.id}">${f.ativa?'Arquivar':'Reativar'}</button>
           <button class="secondary small" data-reset-checks="${f.id}">Resetar marcações</button>
-          <button class="ghost small" data-print-ficha="${f.id}">🖨️ Imprimir ficha</button>
+          <button class="ghost small" data-print-ficha="${f.id}"><i class="ti ti-printer"></i> Imprimir ficha</button>
           <button class="danger small" data-del-ficha="${f.id}">Excluir</button>
         </div>
       </div>
@@ -2151,13 +2153,13 @@ function renderStudentDetail(id){
   return `
     <span class="backBtn noprint" id="backToStudents">&larr; Voltar para Alunos</span>
     <h2>${escapeHtml(s.nome)} ${(s.status||'ativo')==='pausado'?'<span class="tag gray">PAUSADO</span>':''} <span class="tag ${statusPagamentoClass(statusPagamentoAluno(s).status)}">${statusPagamentoLabel(statusPagamentoAluno(s).status)}</span></h2>
-    <div class="sub">${escapeHtml(s.objetivo||'')} ${s.nivel? ' • Nível: '+escapeHtml(s.nivel):''} ${s.whatsapp?` • <a href="${whatsappLink(s.whatsapp)}" target="_blank" rel="noopener" style="color:var(--green);text-decoration:none;">💬 ${escapeHtml(s.whatsapp)}</a>`:''}</div>
+    <div class="sub">${escapeHtml(s.objetivo||'')} ${s.nivel? ' • Nível: '+escapeHtml(s.nivel):''} ${s.whatsapp?` • <a href="${whatsappLink(s.whatsapp)}" target="_blank" rel="noopener" style="color:var(--green);text-decoration:none;"><i class="ti ti-brand-whatsapp"></i> ${escapeHtml(s.whatsapp)}</a>`:''}</div>
     <div class="row noprint" style="margin-bottom:18px;">
       <button id="btnNewFicha">+ Nova ficha de treino</button>
       <button class="secondary" id="btnEditStudent">Editar aluno</button>
       <button class="secondary" id="btnToggleStatus">${(s.status||'ativo')==='pausado'?'Reativar aluno':'Pausar aluno'}</button>
-      <button class="secondary" id="btnPagamento">💳 Pagamento</button>
-      ${s.whatsapp?`<button class="ghost" onclick="window.open('${whatsappLink(s.whatsapp)}','_blank')">💬 Chamar no WhatsApp</button>`:''}
+      <button class="secondary" id="btnPagamento"><i class="ti ti-credit-card"></i> Pagamento</button>
+      ${s.whatsapp?`<button class="ghost" onclick="window.open('${whatsappLink(s.whatsapp)}','_blank')"><i class="ti ti-brand-whatsapp"></i> Chamar no WhatsApp</button>`:''}
       <button class="ghost" onclick="window.print()">Imprimir / Exportar PDF</button>
       <button class="ghost" id="btnFichasArquivadas">Fichas arquivadas (${fichasArquivadasList.length})</button>
       <button class="danger" id="btnDelStudent">Excluir aluno</button>
@@ -2166,7 +2168,7 @@ function renderStudentDetail(id){
     ${buildPlanejamentoHtml(s)}
 
     <div class="sectionTitle">
-      <span class="collapseToggle" data-toggle-section="anamnese"><span class="collapseArrow">${state.collapsedSections.anamnese?'▶':'▼'}</span> 🩺 Anamnese completa</span>
+      <span class="collapseToggle" data-toggle-section="anamnese"><span class="collapseArrow">${state.collapsedSections.anamnese?'▶':'▼'}</span> <i class="ti ti-stethoscope"></i> Anamnese completa</span>
       <button class="secondary small noprint" id="btnEditAnamnese" style="margin-left:auto;">${anamneseRespondida(s)?'Editar anamnese':'+ Preencher anamnese'}</button>
     </div>
     <div class="collapsibleContent" style="display:${state.collapsedSections.anamnese?'none':'block'};">
@@ -2177,11 +2179,11 @@ function renderStudentDetail(id){
           </table>
           ${s.anamneseObservacoes ? `<div style="font-weight:600;margin-top:14px;margin-bottom:6px;">Observações gerais</div><div class="anamneseBox">${escapeHtml(s.anamneseObservacoes)}</div>` : ''}
         </div>
-      ` : '<div class="emptyState"><div class="emptyStateIcon">🩺</div><div class="emptyStateTitle">Nenhuma anamnese ainda</div><div class="emptyStateText">Registre o histórico de saúde e hábitos de vida do aluno pra ter mais segurança na prescrição.</div><button id="btnEmptyAnamnese">+ Preencher anamnese</button></div>'}
+      ` : '<div class="emptyState"><div class="emptyStateIcon"><i class="ti ti-stethoscope"></i></div><div class="emptyStateTitle">Nenhuma anamnese ainda</div><div class="emptyStateText">Registre o histórico de saúde e hábitos de vida do aluno pra ter mais segurança na prescrição.</div><button id="btnEmptyAnamnese">+ Preencher anamnese</button></div>'}
     </div>
 
     <div class="sectionTitle">
-      <span class="collapseToggle" data-toggle-section="evolucao"><span class="collapseArrow">${state.collapsedSections.evolucao?'▶':'▼'}</span> 📊 Evolução</span>
+      <span class="collapseToggle" data-toggle-section="evolucao"><span class="collapseArrow">${state.collapsedSections.evolucao?'▶':'▼'}</span> <i class="ti ti-chart-bar"></i> Evolução</span>
       <select id="chartMetricSelect" class="noprint" style="margin-left:auto;">
         ${METRICAS_EVOLUCAO.map(m=>`<option value="${m.key}" ${m.key===metric.key?'selected':''}>${m.label}</option>`).join('')}
       </select>
@@ -2191,35 +2193,35 @@ function renderStudentDetail(id){
       ${buildComparisonTable(avaliacoesAsc)}
       ${comparePhotosHtml ? `
         <div class="card">
-          <div style="font-weight:600;margin-bottom:10px;">📸 Antes x Depois</div>
+          <div style="font-weight:600;margin-bottom:10px;"><i class="ti ti-camera"></i> Antes x Depois</div>
           <div class="row" style="gap:24px;justify-content:flex-start;">${comparePhotosHtml}</div>
         </div>
       ` : ''}
     </div>
 
     <div class="sectionTitle">
-      <span class="collapseToggle" data-toggle-section="avaliacoes"><span class="collapseArrow">${state.collapsedSections.avaliacoes?'▶':'▼'}</span> 📋 Avaliação física</span>
+      <span class="collapseToggle" data-toggle-section="avaliacoes"><span class="collapseArrow">${state.collapsedSections.avaliacoes?'▶':'▼'}</span> <i class="ti ti-clipboard-list"></i> Avaliação física</span>
       <button class="secondary small noprint" id="btnNewAval" style="margin-left:auto;">+ Nova avaliação</button>
     </div>
-    ${(()=>{ const r = reavaliacaoStatus(s); if(!r || !r.atrasada) return ''; const msg = r.motivo==='nunca' ? 'Este aluno ainda não tem nenhuma avaliação física registrada.' : `Já se passaram ${r.dias} dias desde a última avaliação (limite recomendado: ${REAVAL_DIAS_LIMITE} dias).`; return `<div class="banner noprint">⏰ ${msg}</div>`; })()}
+    ${(()=>{ const r = reavaliacaoStatus(s); if(!r || !r.atrasada) return ''; const msg = r.motivo==='nunca' ? 'Este aluno ainda não tem nenhuma avaliação física registrada.' : `Já se passaram ${r.dias} dias desde a última avaliação (limite recomendado: ${REAVAL_DIAS_LIMITE} dias).`; return `<div class="banner noprint"><i class="ti ti-alert-triangle"></i> ${msg}</div>`; })()}
     <div class="collapsibleContent" style="display:${state.collapsedSections.avaliacoes?'none':'block'};">
-      ${avaliacoesHtml || '<div class="emptyState"><div class="emptyStateIcon">📋</div><div class="emptyStateTitle">Nenhuma avaliação ainda</div><div class="emptyStateText">Lance peso, altura, circunferências e anamnese inicial pra começar a acompanhar a evolução.</div><button id="btnEmptyAvaliacao">+ Nova avaliação</button></div>'}
+      ${avaliacoesHtml || '<div class="emptyState"><div class="emptyStateIcon"><i class="ti ti-clipboard-list"></i></div><div class="emptyStateTitle">Nenhuma avaliação ainda</div><div class="emptyStateText">Lance peso, altura, circunferências e anamnese inicial pra começar a acompanhar a evolução.</div><button id="btnEmptyAvaliacao">+ Nova avaliação</button></div>'}
     </div>
 
     <div class="sectionTitle">
-      <span class="collapseToggle" data-toggle-section="fichas"><span class="collapseArrow">${state.collapsedSections.fichas?'▶':'▼'}</span> 🏋️ Fichas de treino</span>
-      ${fichas.length>0 ? `<span class="tag gray" id="volTotalAluno" style="margin-left:auto;">🏋️ Volume total (todas as fichas): ${formatVolume(fichas.reduce((sum,f)=>sum+volumeTotalFicha(f),0))}kg</span>` : ''}
+      <span class="collapseToggle" data-toggle-section="fichas"><span class="collapseArrow">${state.collapsedSections.fichas?'▶':'▼'}</span> <i class="ti ti-barbell"></i> Fichas de treino</span>
+      ${fichas.length>0 ? `<span class="tag gray" id="volTotalAluno" style="margin-left:auto;"><i class="ti ti-barbell"></i> Volume total (todas as fichas): ${formatVolume(fichas.reduce((sum,f)=>sum+volumeTotalFicha(f),0))}kg</span>` : ''}
     </div>
     <div class="collapsibleContent" style="display:${state.collapsedSections.fichas?'none':'block'};">
       ${fichasHtml || '<div class="emptyState"><div class="emptyStateIcon">+</div><div class="emptyStateTitle">Nenhuma ficha ativa</div><div class="emptyStateText">Crie a primeira ficha de treino para este aluno ou veja as fichas arquivadas.</div><button id="btnEmptyNewFicha">+ Nova ficha de treino</button></div>'}
     </div>
 
     <div class="sectionTitle">
-      <span class="collapseToggle" data-toggle-section="cargas"><span class="collapseArrow">${state.collapsedSections.cargas?'▶':'▼'}</span> 📈 Histórico de carga</span>
+      <span class="collapseToggle" data-toggle-section="cargas"><span class="collapseArrow">${state.collapsedSections.cargas?'▶':'▼'}</span> <i class="ti ti-trending-up"></i> Histórico de carga</span>
       <button class="secondary small noprint" id="btnNewCarga" style="margin-left:auto;">+ Registrar carga</button>
     </div>
     <div class="collapsibleContent" style="display:${state.collapsedSections.cargas?'none':'block'};">
-      ${cargaHtml || '<div class="emptyState"><div class="emptyStateIcon">📈</div><div class="emptyStateTitle">Nenhum registro de carga ainda</div><div class="emptyStateText">Use isso pra acompanhar a evolução do aluno exercício a exercício.</div><button id="btnEmptyCarga">+ Registrar carga</button></div>'}
+      ${cargaHtml || '<div class="emptyState"><div class="emptyStateIcon"><i class="ti ti-trending-up"></i></div><div class="emptyStateTitle">Nenhum registro de carga ainda</div><div class="emptyStateText">Use isso pra acompanhar a evolução do aluno exercício a exercício.</div><button id="btnEmptyCarga">+ Registrar carga</button></div>'}
     </div>
   `;
 }
@@ -2232,7 +2234,7 @@ function exerciseRowHtml(e){
       <td>${escapeHtml(e.series)}</td>
       <td>${escapeHtml(e.reps)}</td>
       <td>${escapeHtml(e.obs||'-')}</td>
-      <td>${e.video ? `<a href="${escapeAttr(e.video)}" target="_blank" rel="noopener" class="ghost small" style="text-decoration:none;display:inline-block;padding:5px 10px;border-radius:7px;">🎥 Ver vídeo</a>` : '-'}</td>
+      <td>${e.video ? `<a href="${escapeAttr(e.video)}" target="_blank" rel="noopener" class="ghost small" style="text-decoration:none;display:inline-block;padding:5px 10px;border-radius:7px;"><i class="ti ti-video"></i> Ver vídeo</a>` : '-'}</td>
       <td class="noprint">
         <button class="secondary small" data-edit-ex="${e.id}">Editar</button>
         <button class="danger small" data-del-ex="${e.id}">Excluir</button>
@@ -2321,7 +2323,7 @@ function renderExercises(){
     </div>
     <div class="card noprint" style="margin-bottom:16px;">
       <div class="field" style="margin-bottom:0;">
-        <label>🔎 Buscar exercício</label>
+        <label><i class="ti ti-search"></i> Buscar exercício</label>
         <input id="exSearchInput" placeholder="Digite o nome ou grupo muscular (ex: supino, costas...)" value="${escapeAttr(state.exerciseSearch||'')}">
       </div>
       <div class="meta" id="exCountLabel" style="margin-top:8px;">${filteredExercises().length} de ${db.exercises.length} exercício(s)</div>
@@ -2355,8 +2357,8 @@ function renderBackup(){
     <div class="card noprint">
       <div style="font-weight:600;margin-bottom:8px;">Exportar backup</div>
       <div class="meta" style="margin-bottom:12px;">Gera um arquivo .json com todos os alunos, fichas, avaliações e o banco de exercícios.</div>
-      ${(()=>{ const b = backupStatus(); const cor = b.atrasado ? 'var(--yellow)' : 'var(--green)'; const msg = b.nunca ? 'Nenhum backup exportado ainda.' : (b.atrasado ? `Último backup há ${b.dias} dia(s) — recomendado exportar a cada ${BACKUP_DIAS_LIMITE} dias.` : `Último backup há ${b.dias} dia(s). Tudo em dia.`); return `<div class="meta" style="margin-bottom:12px;color:${cor};font-weight:600;">${b.atrasado?'⚠️':'✅'} ${msg}</div>`; })()}
-      <button id="btnExportBackup">⬇ Baixar backup (.json)</button>
+      ${(()=>{ const b = backupStatus(); const cor = b.atrasado ? 'var(--yellow)' : 'var(--green)'; const msg = b.nunca ? 'Nenhum backup exportado ainda.' : (b.atrasado ? `Último backup há ${b.dias} dia(s) — recomendado exportar a cada ${BACKUP_DIAS_LIMITE} dias.` : `Último backup há ${b.dias} dia(s). Tudo em dia.`); return `<div class="meta" style="margin-bottom:12px;color:${cor};font-weight:600;">${b.atrasado?'<i class="ti ti-alert-triangle"></i>':'<i class="ti ti-circle-check"></i>'} ${msg}</div>`; })()}
+      <button id="btnExportBackup"><i class="ti ti-download"></i> Baixar backup (.json)</button>
     </div>
     <div class="card noprint">
       <div style="font-weight:600;margin-bottom:8px;">Importar / Restaurar backup</div>
@@ -3101,7 +3103,7 @@ function openFichasArquivadasModal(studentId){
           </div>
           <div class="row" style="gap:6px;flex-wrap:wrap;">
             <button class="secondary small" data-reativar-ficha="${f.id}">Reativar</button>
-            <button class="ghost small" data-print-ficha-arq="${f.id}">🖨️ Imprimir</button>
+            <button class="ghost small" data-print-ficha-arq="${f.id}"><i class="ti ti-printer"></i> Imprimir</button>
             <button class="danger small" data-del-ficha-arq="${f.id}">Excluir</button>
           </div>
         </div>
@@ -3201,7 +3203,7 @@ function openExerciseModal(ex){
       <select id="eGrupoSelect">
         <option value="">Selecione um grupo...</option>
         ${gruposExistentes.map(g=>`<option value="${escapeAttr(g)}" ${editing&&ex.grupo===g?'selected':''}>${escapeHtml(g)}</option>`).join('')}
-        <option value="__novo__" ${grupoAtualEhNovo?'selected':''}>➕ Novo grupo...</option>
+        <option value="__novo__" ${grupoAtualEhNovo?'selected':''}><i class="ti ti-plus"></i> Novo grupo...</option>
       </select>
       <input id="eGrupoNovo" placeholder="Nome do novo grupo" style="margin-top:8px;display:${grupoAtualEhNovo?'block':'none'};" value="${grupoAtualEhNovo?escapeAttr(ex.grupo):''}">
     </div>
@@ -3254,7 +3256,7 @@ function openAvaliacaoModal(av){
         <label>% Gordura <span style="color:var(--accent);">(estimativa)</span></label>
         <div class="row" style="gap:6px;flex-wrap:nowrap;">
           <input id="avPercGordura" value="${editing?escapeAttr(av.percGordura||''):''}" style="flex:1;">
-          <button type="button" class="secondary small" id="avRecalcBtn" title="Recalcular estimativa automática">🔄</button>
+          <button type="button" class="secondary small" id="avRecalcBtn" title="Recalcular estimativa automática"><i class="ti ti-refresh"></i></button>
         </div>
       </div>
       <div class="field"><label>Pescoço (cm)</label><input id="avPescoco" value="${editing?escapeAttr(av.circPescoco||''):''}"></div>
@@ -3266,7 +3268,7 @@ function openAvaliacaoModal(av){
       <div class="field"><label>Coxa (cm)</label><input id="avCoxa" value="${editing?escapeAttr(av.circCoxa||''):''}"></div>
       <div class="field"><label>Panturrilha (cm)</label><input id="avPanturrilha" value="${editing?escapeAttr(av.circPanturrilha||''):''}"></div>
     </div>
-    <div class="sectionTitle" style="font-size:14px;margin:16px 0 8px;">📏 Dobras cutâneas <span style="color:var(--muted);font-weight:400;font-size:12px;">(protocolo de 7 dobras, opcional)</span></div>
+    <div class="sectionTitle" style="font-size:14px;margin:16px 0 8px;"><i class="ti ti-ruler"></i> Dobras cutâneas <span style="color:var(--muted);font-weight:400;font-size:12px;">(protocolo de 7 dobras, opcional)</span></div>
     <div class="measureGrid">
       <div class="field"><label>Tricipital (mm)</label><input id="avDobraTricipital" value="${editing?escapeAttr(av.dobraTricipital||''):''}"></div>
       <div class="field"><label>Bicipital (mm)</label><input id="avDobraBicipital" value="${editing?escapeAttr(av.dobraBicipital||''):''}"></div>
@@ -3278,7 +3280,7 @@ function openAvaliacaoModal(av){
       <div class="field"><label>Supraespinhal (mm)</label><input id="avDobraSupraespinhal" value="${editing?escapeAttr(av.dobraSupraespinhal||''):''}"></div>
     </div>
     <div class="anamneseBox" style="margin-top:-4px;margin-bottom:10px;font-size:12px;">
-      ⚠️ O % de gordura é uma <strong>estimativa</strong> pelo método US Navy (fita métrica), com margem de erro de aproximadamente 3-4% em relação a exames de laboratório (DEXA), e tende a errar mais em pessoas muito magras ou muito musculosas. Se você tiver adipômetro, bioimpedância ou outro equipamento próprio, digite o valor real por cima — o campo é totalmente editável e seu valor não será sobrescrito sozinho.
+      <i class="ti ti-alert-triangle"></i> O % de gordura é uma <strong>estimativa</strong> pelo método US Navy (fita métrica), com margem de erro de aproximadamente 3-4% em relação a exames de laboratório (DEXA), e tende a errar mais em pessoas muito magras ou muito musculosas. Se você tiver adipômetro, bioimpedância ou outro equipamento próprio, digite o valor real por cima — o campo é totalmente editável e seu valor não será sobrescrito sozinho.
     </div>
     <div class="meta" id="avGorduraHint" style="margin-top:-4px;margin-bottom:10px;"></div>
     <div class="actions">
@@ -3497,7 +3499,7 @@ function openPagamentosModal(studentId){
   const situacao = statusPagamentoAluno(s);
   document.getElementById('modalBody').classList.add('wide');
   openModal(`
-    <h3 style="margin-bottom:2px;">💳 Pagamentos — ${escapeHtml(s.nome)}</h3>
+    <h3 style="margin-bottom:2px;"><i class="ti ti-credit-card"></i> Pagamentos — ${escapeHtml(s.nome)}</h3>
     <div class="row" style="margin:8px 0 16px;"><span class="tag ${statusPagamentoClass(situacao.status)}">${statusPagamentoLabel(situacao.status)} (${formatMes(mesAtual())})</span></div>
 
     <div class="sectionTitle" style="font-size:14px;margin:6px 0 8px;">Configuração da mensalidade</div>
@@ -3526,12 +3528,12 @@ function openPagamentosModal(studentId){
           ${registros.map(r=>`
             <tr>
               <td>${formatMes(r.mes)}</td>
-              <td><span class="tag ${r.status==='pago'?'green':'yellow'}">${r.status==='pago'?'✅ Pago':'🕒 Pendente'}</span></td>
+              <td><span class="tag ${r.status==='pago'?'green':'yellow'}"><i class="ti ${r.status==='pago'?'ti-circle-check':'ti-clock'}"></i> ${r.status==='pago'?'Pago':'Pendente'}</span></td>
               <td>${r.dataPagamento?formatDate(r.dataPagamento):'-'}</td>
               <td>${r.valor?'R$ '+escapeHtml(String(r.valor)):'-'}</td>
               <td>${r.metodo?escapeHtml(r.metodo):'-'}</td>
-              <td>${r.notaFiscal ? `<a href="${r.notaFiscal.dataUrl}" target="_blank" rel="noopener" title="${escapeAttr(r.notaFiscal.name)}">📎 Ver</a>` : '-'}</td>
-              <td class="noprint"><button class="ghost small" data-recibo-pg="${r.id}" title="Gerar recibo em PDF">🖨️ Recibo</button> <button class="ghost small" data-edit-pg="${r.id}">Editar</button> <button class="danger small" data-del-pg="${r.id}">Excluir</button></td>
+              <td>${r.notaFiscal ? `<a href="${r.notaFiscal.dataUrl}" target="_blank" rel="noopener" title="${escapeAttr(r.notaFiscal.name)}"><i class="ti ti-paperclip"></i> Ver</a>` : '-'}</td>
+              <td class="noprint"><button class="ghost small" data-recibo-pg="${r.id}" title="Gerar recibo em PDF"><i class="ti ti-printer"></i> Recibo</button> <button class="ghost small" data-edit-pg="${r.id}">Editar</button> <button class="danger small" data-del-pg="${r.id}">Excluir</button></td>
             </tr>
           `).join('') || `<tr><td colspan="7" class="empty">Nenhum pagamento registrado ainda.</td></tr>`}
         </tbody>
@@ -3599,8 +3601,8 @@ function openRegistroPagamentoModal(s, registro, onDone){
       <div class="field" style="flex:1"><label>Mês de referência</label><input id="rpMes" type="month" value="${escapeAttr(mesPadrao)}"></div>
       <div class="field" style="flex:1"><label>Status</label>
         <select id="rpStatus">
-          <option value="pago" ${(!editing || registro.status==='pago')?'selected':''}>✅ Pago</option>
-          <option value="pendente" ${editing && registro.status==='pendente'?'selected':''}>🕒 Pendente</option>
+          <option value="pago" ${(!editing || registro.status==='pago')?'selected':''}><i class="ti ti-circle-check"></i> Pago</option>
+          <option value="pendente" ${editing && registro.status==='pendente'?'selected':''}><i class="ti ti-clock"></i> Pendente</option>
         </select>
       </div>
     </div>
@@ -3658,7 +3660,7 @@ function compareTableHtml(f){
         ${f.exercicios.map(e=>`<tr><td>${escapeHtml(e.nome)}</td><td>${escapeHtml(e.series||'-')}</td><td>${escapeHtml(e.reps||'-')}</td><td>${escapeHtml(e.obs||'-')}</td><td>${escapeHtml(e.descanso||'-')}</td><td>${formatVolume(calcularVolumeExercicio(e))}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">Sem exercícios.</td></tr>'}
       </tbody>
     </table>
-    <div class="meta" style="margin-top:8px;font-weight:600;">🏋️ Volume total: ${formatVolume(volumeTotalFicha(f))}kg</div>
+    <div class="meta" style="margin-top:8px;font-weight:600;"><i class="ti ti-barbell"></i> Volume total: ${formatVolume(volumeTotalFicha(f))}kg</div>
   `;
 }
 function openCompareModal(fichaA){
@@ -3701,7 +3703,7 @@ function openFichaModal(ficha){
       <div class="exRow" data-idx="${i}">
         <div class="exRowTop">
           <select class="rEx">${'<option value="">Selecione o exercício...</option>'+exOptions(e.nome)}</select>
-          <button class="danger small" data-rm="${i}" title="Remover">✕</button>
+          <button class="danger small" data-rm="${i}" title="Remover"><i class="ti ti-x"></i></button>
         </div>
         <div class="exRowBottom">
           <div class="miniField"><label>Séries</label><input class="rSeries" placeholder="Ex: 3" value="${escapeAttr(e.series||'')}"></div>
@@ -3710,7 +3712,7 @@ function openFichaModal(ficha){
           <div class="miniField"><label>Descanso</label><input class="rDescanso" placeholder="Ex: 60s" value="${escapeAttr(e.descanso||'')}"></div>
           <div class="miniField"><label>Método</label><input class="rMetodo" placeholder="Ex: Bi-set, conjugado" value="${escapeAttr(e.metodo||'')}"></div>
           <div class="miniField"><label>Anotações</label><input class="rNotas" placeholder="dor, dificuldade..." value="${escapeAttr(e.notas||'')}"></div>
-          <div class="miniField"><label>&nbsp;</label><label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);cursor:pointer;font-weight:400;"><input type="checkbox" class="rEncadeado" ${e.encadeado?'checked':''} style="width:16px;height:16px;">🔗 Encadear c/ próximo</label></div>
+          <div class="miniField"><label>&nbsp;</label><label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);cursor:pointer;font-weight:400;"><input type="checkbox" class="rEncadeado" ${e.encadeado?'checked':''} style="width:16px;height:16px;"><i class="ti ti-link"></i> Encadear c/ próximo</label></div>
         </div>
         <input class="rGrupo" style="display:none" value="${escapeAttr(e.grupo||'')}">
         <input class="rVideo" style="display:none" value="${escapeAttr(e.video||'')}">
@@ -3909,7 +3911,7 @@ function traduzErroFirebase(err){
 }
 function abrirModalTrocarEmail(){
   openModal(`
-    <h3 style="margin-top:0;">✉️ Trocar e-mail da conta</h3>
+    <h3 style="margin-top:0;"><i class="ti ti-mail"></i> Trocar e-mail da conta</h3>
     <div class="sub" style="margin-bottom:16px;">Vamos enviar um link de confirmação para o novo e-mail. Só depois de você clicar nesse link é que o login passa a usar o novo endereço (seus dados e senha continuam os mesmos). Confirme sua senha atual pra prosseguir.</div>
     <div id="trocarEmailErro" class="banner" style="display:none;border-color:var(--red);margin-bottom:14px;"></div>
     <div class="field"><label>E-mail atual</label><input type="text" value="${escapeAttr((window.__fitproEmailAtual)||'')}" disabled></div>
@@ -3938,7 +3940,7 @@ function abrirModalTrocarEmail(){
     try{
       await window.__fbChangeEmail(senha, novoEmail);
       openModal(`
-        <h3 style="margin-top:0;">📩 Confirme pelo e-mail</h3>
+        <h3 style="margin-top:0;"><i class="ti ti-mail-check"></i> Confirme pelo e-mail</h3>
         <div class="sub">Enviamos um link de confirmação para <strong>${escapeHtml(novoEmail)}</strong>. Abra essa caixa de entrada (e o spam) e clique no link — só depois disso o login passa a usar o novo e-mail. Sua senha e seus dados continuam os mesmos.</div>
         <div style="display:flex;justify-content:flex-end;margin-top:16px;">
           <button id="btnFecharTrocarEmailOk">Entendi</button>
