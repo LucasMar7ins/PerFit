@@ -3901,6 +3901,9 @@ function traduzErroFirebase(err){
     'auth/missing-email':'Digite seu e-mail.',
     'auth/requires-recent-login':'Por segurança, entre novamente antes de trocar o e-mail.',
     'auth/operation-not-allowed':'Essa troca não está habilitada nas configurações do Firebase.',
+    'auth/invalid-action-code':'Esse link não é válido. Peça a troca de e-mail de novo.',
+    'auth/expired-action-code':'Esse link expirou ou já foi usado. Peça a troca de e-mail de novo.',
+    'auth/user-disabled':'Essa conta foi desativada.',
   };
   return map[code] || 'Não foi possível entrar. Tente novamente.';
 }
@@ -3952,6 +3955,51 @@ function abrirModalTrocarEmail(){
     }
   };
 }
+function limparQueryString(){
+  if(window.history && window.history.replaceState){
+    window.history.replaceState({}, document.title, window.location.origin + window.location.pathname);
+  }
+}
+window.__showConfirmarEmail = function(oobCode){
+  window.__fitproMostrandoConfirmacaoEmail = true;
+  window.scrollTo(0,0);
+  const navEl = document.querySelector('nav');
+  if(navEl) navEl.style.display = 'none';
+  document.getElementById('main').style.margin = '0 auto';
+  const desenhar = (mensagem, tipo, concluido) => {
+    document.getElementById('main').innerHTML = `
+      <div style="max-width:360px;margin:80px auto;text-align:center;">
+        <img src="${appIconUrl()}" alt="" style="width:48px;height:48px;border-radius:12px;margin-bottom:12px;">
+        <h2 style="margin-bottom:4px;">Per<span style="color:var(--accent2);">Fit</span></h2>
+        <div class="sub" style="margin-bottom:24px;">Confirmação de troca de e-mail</div>
+        <div class="card" style="text-align:left;">
+          ${mensagem ? `<div class="banner" style="margin-bottom:14px;border-color:${tipo==='sucesso'?'var(--green)':'var(--red)'};">${escapeHtml(mensagem)}</div>` : `<div class="sub">Clique no botão abaixo pra confirmar a troca de e-mail da sua conta.</div>`}
+          <div class="actions" style="justify-content:flex-end;margin-top:16px;">
+            ${concluido
+              ? `<button id="btnIrParaLogin">Ir para o login</button>`
+              : `<button id="btnConfirmarAcaoEmail">Confirmar troca de e-mail</button>`}
+          </div>
+        </div>
+      </div>
+    `;
+    const btnConfirmar = document.getElementById('btnConfirmarAcaoEmail');
+    if(btnConfirmar) btnConfirmar.onclick = async ()=>{
+      btnConfirmar.disabled = true;
+      btnConfirmar.textContent = 'Confirmando...';
+      try{
+        await window.__fbApplyActionCode(oobCode);
+        window.__fitproMostrandoConfirmacaoEmail = false;
+        limparQueryString();
+        desenhar('E-mail confirmado! Use o novo e-mail pra entrar a partir de agora.', 'sucesso', true);
+      }catch(err){
+        desenhar(traduzErroFirebase(err), 'erro', false);
+      }
+    };
+    const btnIr = document.getElementById('btnIrParaLogin');
+    if(btnIr) btnIr.onclick = ()=>{ window.location.href = window.location.origin + window.location.pathname; };
+  };
+  desenhar();
+};
 function renderLoginScreen(mensagem, emailPreenchido, tipoMensagem){
   window.scrollTo(0,0);
   const navEl = document.querySelector('nav');
@@ -4087,7 +4135,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail, verifyBeforeUpdateEmail, reauthenticateWithCredential, EmailAuthProvider } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail, verifyBeforeUpdateEmail, reauthenticateWithCredential, EmailAuthProvider, applyActionCode } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, serverTimestamp, collection, query, orderBy, limit, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -4111,9 +4159,17 @@ window.__fbChangeEmail = async (senhaAtual, novoEmail) => {
   if(!user) throw new Error('Nenhum usuário logado.');
   const cred = EmailAuthProvider.credential(user.email, senhaAtual);
   await reauthenticateWithCredential(user, cred);
-  await verifyBeforeUpdateEmail(user, novoEmail);
+  // handleCodeInApp: o link do e-mail volta pro próprio app (em vez da página padrão do Firebase)
+  // e a troca só é efetivada quando o usuário clica em "Confirmar" aqui dentro — isso evita que
+  // scanners de segurança de e-mail "gastem" o link sozinhos ao pré-visitá-lo.
+  const actionCodeSettings = {
+    url: window.location.origin + window.location.pathname,
+    handleCodeInApp: true
+  };
+  await verifyBeforeUpdateEmail(user, novoEmail, actionCodeSettings);
   return novoEmail;
 };
+window.__fbApplyActionCode = (oobCode) => applyActionCode(auth, oobCode);
 
 // Fila de salvamentos: garante que cada salvamento na nuvem só comece depois do anterior terminar,
 // evitando que escritas concorrentes cheguem ao Firestore fora de ordem.
@@ -4328,8 +4384,20 @@ async function verificarLicenca(uid, email){
 // O Firebase dispara onAuthStateChanged de novo sozinho em situações normais (renovação de token,
 // reconexão de rede etc.) — sem essa trava, cada disparo buscaria a nuvem de novo e substituiria
 // os dados em tela por uma versão possivelmente desatualizada (ex.: de antes de um salvamento terminar).
+// Se o link do e-mail de troca de e-mail voltou pro app (mode=verifyAndChangeEmail&oobCode=...),
+// mostra a tela de confirmação em vez do fluxo normal de login/app.
+(function checarLinkDeAcao(){
+  const params = new URLSearchParams(window.location.search);
+  const modo = params.get('mode');
+  const oobCode = params.get('oobCode');
+  if(modo === 'verifyAndChangeEmail' && oobCode && window.__showConfirmarEmail){
+    window.__showConfirmarEmail(oobCode);
+  }
+})();
+
 let uidCarregado = null;
 onAuthStateChanged(auth, async (user) => {
+  if(window.__fitproMostrandoConfirmacaoEmail) return; // aguardando confirmação do link de e-mail, não sobrescrever a tela
   if(user){
     if(user.uid === uidCarregado) return; // mesmo usuário já carregado — evento repetido, ignorar
     uidCarregado = user.uid;
