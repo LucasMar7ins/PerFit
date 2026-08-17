@@ -214,6 +214,8 @@
   @keyframes girarSalvando{to{transform:rotate(360deg);}}
   .loadingLogo{width:40px;height:40px;border-radius:10px;background:var(--accent);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;animation:pulsarLoading 1.4s ease-in-out infinite;}
   @keyframes pulsarLoading{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.55;transform:scale(.92);}}
+  .fichaTabBtn{background:var(--panel2);color:var(--muted);border:none;padding:7px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;}
+  .fichaTabBtn.active{background:var(--accent);color:#fff;}
   .fichaHeader{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
   .fichaTag{width:34px;height:34px;border-radius:8px;background:var(--accent2);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;}
   .exRow{border:1px solid var(--line);border-radius:9px;padding:12px;margin-bottom:10px;background:var(--panel2);}
@@ -4674,20 +4676,28 @@ window.__renderAlunoView = function(dados){
   // Compatibilidade: links gerados antes desta correção salvaram só uma ficha (fichaAtiva);
   // links novos salvam todas as fichas ativas (fichasAtivas). Aceita os dois formatos.
   const fichasAtivas = dados.fichasAtivas || (dados.fichaAtiva ? [dados.fichaAtiva] : []);
-  const fichasHtml = fichasAtivas.map(ficha=>`
-    <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px;">Ficha ativa${ficha.letra?(' · Treino '+escapeHtml(ficha.letra)):''}</div>
-    <div class="card" style="margin-bottom:18px;padding:4px 16px;">
-      ${(ficha.exercicios||[]).map(e=>`
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);">
-          <div>
-            <div style="font-size:13px;font-weight:600;">${escapeHtml(e.nome)}</div>
-            <div style="font-size:11px;color:var(--muted);">${escapeHtml(e.series||'-')} séries x ${escapeHtml(e.reps||'-')} reps${e.descanso?(' · descanso '+escapeHtml(e.descanso)):''}</div>
-          </div>
-          ${e.obs ? `<div style="font-size:11px;color:var(--accent);font-weight:600;max-width:120px;text-align:right;">${escapeHtml(e.obs)}</div>` : ''}
-        </div>
-      `).join('')}
+  const fichaExerciciosHtml = (ficha)=> (ficha.exercicios||[]).map(e=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);">
+      <div>
+        <div style="font-size:13px;font-weight:600;">${escapeHtml(e.nome)}</div>
+        <div style="font-size:11px;color:var(--muted);">${escapeHtml(e.series||'-')} séries x ${escapeHtml(e.reps||'-')} reps${e.descanso?(' · descanso '+escapeHtml(e.descanso)):''}</div>
+      </div>
+      ${e.obs ? `<div style="font-size:11px;color:var(--accent);font-weight:600;max-width:120px;text-align:right;">${escapeHtml(e.obs)}</div>` : ''}
     </div>
   `).join('');
+  const fichasHtml = fichasAtivas.length===0 ? '' : `
+    <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px;">Fichas ativas</div>
+    ${fichasAtivas.length>1 ? `
+    <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
+      ${fichasAtivas.map((f,i)=>`<button type="button" class="fichaTabBtn${i===0?' active':''}" data-ficha-tab="${i}">${f.letra?('Treino '+escapeHtml(f.letra)):('Ficha '+(i+1))}</button>`).join('')}
+    </div>` : ''}
+    ${fichasAtivas.map((ficha,i)=>`
+      <div class="card fichaTabPanel" data-ficha-panel="${i}" style="margin-bottom:18px;padding:4px 16px;${i===0?'':'display:none;'}">
+        ${fichasAtivas.length===1 && ficha.letra ? `<div style="font-size:11px;color:var(--muted);padding-top:10px;">Treino ${escapeHtml(ficha.letra)}</div>` : ''}
+        ${fichaExerciciosHtml(ficha)}
+      </div>
+    `).join('')}
+  `;
 
   const presencaHtml = (dados.presencaRecente||[]).map(p=>{
     const cor = p.status==='compareceu' ? 'var(--green)' : (p.status==='faltou' ? 'var(--red)' : 'var(--yellow)');
@@ -4722,6 +4732,15 @@ window.__renderAlunoView = function(dados){
   `;
   const btnAval = document.getElementById('btnVerAvaliacaoAluno');
   if(btnAval) btnAval.onclick = ()=> window.__renderAlunoViewAvaliacao(dados);
+  document.querySelectorAll('[data-ficha-tab]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const idx = btn.dataset.fichaTab;
+      document.querySelectorAll('[data-ficha-tab]').forEach(b=> b.classList.toggle('active', b===btn));
+      document.querySelectorAll('[data-ficha-panel]').forEach(p=>{
+        p.style.display = (p.dataset.fichaPanel===idx) ? 'block' : 'none';
+      });
+    };
+  });
 };
 window.__renderAlunoViewAvaliacao = function(dados){
   window.scrollTo(0,0);
