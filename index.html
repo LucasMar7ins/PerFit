@@ -604,8 +604,67 @@ function saveDB(){
   } else {
     showSavedPill('Salvo');
   }
+  sincronizarAlunoLinksAtivos();
 }
 function uid(){ return Math.random().toString(36).slice(2,10); }
+function gerarTokenAluno(){
+  if(window.crypto && window.crypto.randomUUID) return window.crypto.randomUUID().replace(/-/g,'');
+  let out = '';
+  for(let i=0;i<32;i++) out += Math.floor(Math.random()*36).toString(36);
+  return out;
+}
+
+// ---------- LINK DE ACOMPANHAMENTO DO ALUNO (página só de leitura) ----------
+function proximosTreinosAluno(s, dataInicioISO, dias){
+  const out = [];
+  for(let i=0;i<dias;i++){
+    const dataISO = addDiasISO(dataInicioISO, i);
+    const diaKey = diaSemanaFromISODate(dataISO);
+    (s.agenda||[]).forEach(a=>{
+      const ocorre = a.tipo==='unico' ? a.data===dataISO : a.dia===diaKey;
+      if(ocorre) out.push({data:dataISO, horario:a.horario||''});
+    });
+  }
+  out.sort((a,b)=> (a.data+(a.horario||'')).localeCompare(b.data+(b.horario||'')));
+  return out.slice(0,6);
+}
+function presencaRecenteAluno(s, limite){
+  return (s.presencas||[]).slice()
+    .sort((a,b)=> (b.data||'').localeCompare(a.data||''))
+    .slice(0, limite||6)
+    .map(p=>({data:p.data, status:p.status}));
+}
+function montarPayloadAlunoLink(s){
+  const ultima = ultimaAvaliacao(s);
+  const fichaAtiva = (s.fichas||[]).find(f=>f.ativa) || null;
+  return {
+    trainerUid: currentUid,
+    nome: s.nome || '',
+    proximaReavaliacao: ultima && ultima.data ? addDiasISO(ultima.data, REAVAL_DIAS_LIMITE) : null,
+    proximosTreinos: proximosTreinosAluno(s, isoHoje(), 7),
+    fichaAtiva: fichaAtiva ? {
+      letra: fichaAtiva.letra || '',
+      nome: fichaAtiva.nome || '',
+      exercicios: (fichaAtiva.exercicios||[]).map(e=>({nome:e.nome||'', series:e.series||'', reps:e.reps||'', descanso:e.descanso||'', obs:e.obs||''}))
+    } : null,
+    presencaRecente: presencaRecenteAluno(s, 6),
+    avaliacoes: (s.avaliacoes||[]).slice()
+      .filter(a=>a.data)
+      .sort((a,b)=> a.data.localeCompare(b.data))
+      .slice(-10)
+      .map(av=>({
+        data: av.data||'', peso: av.peso||'', altura: av.altura||'', percGordura: av.percGordura||'',
+        circCintura: av.circCintura||'', circQuadril: av.circQuadril||'', circAbdomen: av.circAbdomen||'',
+        circPeito: av.circPeito||'', circBraco: av.circBraco||'', circCoxa: av.circCoxa||''
+      })),
+    atualizadoEm: new Date().toISOString()
+  };
+}
+function sincronizarAlunoLinksAtivos(){
+  if(!db || !db.students || !currentUid || !window.__syncAlunoLinks) return;
+  const payloads = db.students.filter(s=>s.linkToken).map(s=>({token:s.linkToken, payload: montarPayloadAlunoLink(s)}));
+  if(payloads.length>0) window.__syncAlunoLinks(payloads);
+}
 
 let db = loadDB();
 let currentUid = null;
@@ -2304,6 +2363,30 @@ function renderStudentDetail(id){
       <button class="danger" id="btnDelStudent">Excluir aluno</button>
     </div>
 
+    <div class="card noprint" style="margin-bottom:18px;">
+      ${s.linkToken ? `
+        <div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+          <div>
+            <div style="font-weight:600;font-size:13px;"><i class="ti ti-link"></i> Link de acompanhamento ativo</div>
+            <div class="meta">O aluno vê a ficha ativa, próximos treinos e presença, sem precisar de senha.</div>
+          </div>
+          <div class="row" style="gap:6px;">
+            <button class="secondary small" id="btnCopiarLinkAluno">Copiar link</button>
+            <button class="ghost small" id="btnWhatsappLinkAluno"><i class="ti ti-brand-whatsapp"></i> Enviar</button>
+            <button class="danger small" id="btnRevogarLinkAluno">Revogar</button>
+          </div>
+        </div>
+      ` : `
+        <div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+          <div>
+            <div style="font-weight:600;font-size:13px;"><i class="ti ti-link"></i> Link de acompanhamento</div>
+            <div class="meta">Gere um link pra este aluno acompanhar a própria ficha e presença pelo celular.</div>
+          </div>
+          <button class="secondary small" id="btnGerarLinkAluno">Gerar link</button>
+        </div>
+      `}
+    </div>
+
     ${buildPlanejamentoHtml(s)}
 
     <div class="sectionTitle">
@@ -2633,6 +2716,47 @@ function bindEvents(){
 
   const btnPagamento = document.getElementById('btnPagamento');
   if(btnPagamento) btnPagamento.onclick = ()=> openPagamentosModal(state.studentId);
+
+  const linkAlunoUrl = (s)=> `${window.location.origin}${window.location.pathname}?aluno=${s.linkToken}`;
+  const btnGerarLinkAluno = document.getElementById('btnGerarLinkAluno');
+  if(btnGerarLinkAluno) btnGerarLinkAluno.onclick = ()=>{
+    const s = db.students.find(x=>x.id===state.studentId);
+    if(!s) return;
+    s.linkToken = gerarTokenAluno();
+    saveDB();
+    render();
+    showToast('Link de acompanhamento gerado.', 'success');
+  };
+  const btnCopiarLinkAluno = document.getElementById('btnCopiarLinkAluno');
+  if(btnCopiarLinkAluno) btnCopiarLinkAluno.onclick = ()=>{
+    const s = db.students.find(x=>x.id===state.studentId);
+    if(!s || !s.linkToken) return;
+    const link = linkAlunoUrl(s);
+    navigator.clipboard.writeText(link)
+      .then(()=> showToast('Link copiado.', 'success'))
+      .catch(()=> showToast('Não foi possível copiar automaticamente. Link: '+link, 'error'));
+  };
+  const btnWhatsappLinkAluno = document.getElementById('btnWhatsappLinkAluno');
+  if(btnWhatsappLinkAluno) btnWhatsappLinkAluno.onclick = ()=>{
+    const s = db.students.find(x=>x.id===state.studentId);
+    if(!s || !s.linkToken) return;
+    const mensagem = `Oi ${s.nome}! Aqui está o link pra você acompanhar sua ficha de treino e presença: ${linkAlunoUrl(s)}`;
+    const url = s.whatsapp ? whatsappLink(s.whatsapp, mensagem) : `https://wa.me/?text=${encodeURIComponent(mensagem)}`;
+    window.open(url, '_blank');
+  };
+  const btnRevogarLinkAluno = document.getElementById('btnRevogarLinkAluno');
+  if(btnRevogarLinkAluno) btnRevogarLinkAluno.onclick = ()=>{
+    const s = db.students.find(x=>x.id===state.studentId);
+    if(!s) return;
+    showConfirm('Revogar este link? Quem tiver o link atual não vai mais conseguir acessar. Você pode gerar um novo depois, se quiser.', ()=>{
+      const tokenAntigo = s.linkToken;
+      s.linkToken = null;
+      saveDB();
+      if(window.__deleteAlunoLink) window.__deleteAlunoLink(tokenAntigo);
+      render();
+      showToast('Link revogado.', 'success');
+    }, {danger:true, confirmLabel:'Revogar'});
+  };
 
   document.querySelectorAll('[data-manage-pagamento]').forEach(el=>{
     el.onclick = ()=> openPagamentosModal(el.dataset.managePagamento);
@@ -4488,6 +4612,166 @@ function renderLoginScreen(mensagem, emailPreenchido, tipoMensagem){
     renderLandingScreen();
   };
 }
+
+// ---------- PÁGINA DO ALUNO (link de acompanhamento, só leitura, sem login) ----------
+function formatDataCurta(iso){
+  if(!iso) return '-';
+  const d = new Date(iso+'T00:00:00');
+  if(isNaN(d.getTime())) return '-';
+  const dias = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  return `${dias[d.getDay()]}, ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+function alunoViewHeaderHtml(){
+  return `
+    <div style="display:flex;align-items:center;gap:8px;padding:16px 20px;border-bottom:1px solid var(--line);">
+      <img src="${appIconUrl()}" alt="" style="width:22px;height:22px;border-radius:6px;">
+      <span style="font-size:14px;font-weight:600;color:var(--accent);">PerFit</span>
+      <span style="margin-left:auto;font-size:11px;color:var(--muted);background:var(--panel2);padding:3px 10px;border-radius:20px;">Só visualização</span>
+    </div>
+  `;
+}
+window.__renderAlunoViewLoading = function(){
+  const navEl = document.querySelector('nav');
+  if(navEl) navEl.style.display = 'none';
+  const main = document.getElementById('main');
+  main.style.margin = '0';
+  main.style.maxWidth = 'none';
+  main.style.padding = '0';
+  main.innerHTML = `<div style="text-align:center;margin-top:100px;"><div class="loadingLogo"><span style="color:#fff;font-size:15px;font-weight:600;">P</span></div><div style="color:var(--muted);font-size:13px;">Carregando...</div></div>`;
+};
+window.__renderAlunoViewInvalido = function(){
+  const navEl = document.querySelector('nav');
+  if(navEl) navEl.style.display = 'none';
+  const main = document.getElementById('main');
+  main.style.margin = '0';
+  main.style.maxWidth = 'none';
+  main.style.padding = '0';
+  main.innerHTML = `
+    ${alunoViewHeaderHtml()}
+    <div style="max-width:360px;margin:80px auto;text-align:center;padding:0 20px;">
+      <i class="ti ti-link-off" style="font-size:32px;color:var(--muted);"></i>
+      <div style="font-weight:600;margin:12px 0 6px;">Link inválido ou revogado</div>
+      <div class="sub">Peça pro seu personal te enviar um novo link de acompanhamento.</div>
+    </div>
+  `;
+};
+window.__renderAlunoView = function(dados){
+  window.scrollTo(0,0);
+  const navEl = document.querySelector('nav');
+  if(navEl) navEl.style.display = 'none';
+  const main = document.getElementById('main');
+  main.style.margin = '0';
+  main.style.maxWidth = 'none';
+  main.style.padding = '0';
+
+  const proximos = (dados.proximosTreinos||[]).map(t=>`
+    <div class="dashListRow" style="cursor:default;">
+      <span><i class="ti ti-calendar-event" style="color:var(--accent);margin-right:6px;"></i>${formatDataCurta(t.data)}</span>
+      <span style="color:var(--accent);font-weight:600;">${escapeHtml(t.horario||'-')}</span>
+    </div>
+  `).join('') || '<div class="empty" style="padding:14px 0;">Nenhum treino agendado nos próximos dias.</div>';
+
+  const exerciciosHtml = dados.fichaAtiva ? (dados.fichaAtiva.exercicios||[]).map(e=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);">
+      <div>
+        <div style="font-size:13px;font-weight:600;">${escapeHtml(e.nome)}</div>
+        <div style="font-size:11px;color:var(--muted);">${escapeHtml(e.series||'-')} séries x ${escapeHtml(e.reps||'-')} reps${e.descanso?(' · descanso '+escapeHtml(e.descanso)):''}</div>
+      </div>
+      ${e.obs ? `<div style="font-size:11px;color:var(--accent);font-weight:600;max-width:120px;text-align:right;">${escapeHtml(e.obs)}</div>` : ''}
+    </div>
+  `).join('') : '';
+
+  const presencaHtml = (dados.presencaRecente||[]).map(p=>{
+    const cor = p.status==='compareceu' ? 'var(--green)' : (p.status==='faltou' ? 'var(--red)' : 'var(--yellow)');
+    const label = PRESENCA_LABEL[p.status] || p.status;
+    return `<div class="dashListRow" style="cursor:default;"><span>${formatDataCurta(p.data)}</span><span style="color:${cor};display:flex;align-items:center;gap:5px;">${label}</span></div>`;
+  }).join('') || '<div class="empty" style="padding:14px 0;">Nenhuma presença registrada ainda.</div>';
+
+  main.innerHTML = `
+    <div style="max-width:480px;margin:0 auto;">
+      ${alunoViewHeaderHtml()}
+      <div style="padding:20px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
+          <div class="studentAvatar" style="width:44px;height:44px;font-size:15px;">${iniciaisNome(dados.nome)}</div>
+          <div>
+            <div style="font-size:16px;font-weight:600;">${escapeHtml(dados.nome||'')}</div>
+            ${dados.proximaReavaliacao ? `<div style="font-size:11px;color:var(--muted);">Próxima reavaliação em ${formatDate(dados.proximaReavaliacao)}</div>` : ''}
+          </div>
+        </div>
+        ${(dados.avaliacoes && dados.avaliacoes.length) ? `
+        <div id="btnVerAvaliacaoAluno" style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--panel2);border-radius:10px;padding:10px 14px;margin-bottom:18px;cursor:pointer;">
+          <span style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--accent);font-weight:600;"><i class="ti ti-chart-bar"></i> Ver minha avaliação física</span>
+          <i class="ti ti-chevron-right" style="color:var(--accent);"></i>
+        </div>` : ''}
+        <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px;">Seus próximos treinos</div>
+        <div class="card" style="margin-bottom:18px;">${proximos}</div>
+        ${dados.fichaAtiva ? `
+        <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px;">Ficha ativa${dados.fichaAtiva.letra?(' · Treino '+escapeHtml(dados.fichaAtiva.letra)):''}</div>
+        <div class="card" style="margin-bottom:18px;padding:4px 16px;">${exerciciosHtml}</div>` : ''}
+        <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px;">Presença recente</div>
+        <div class="card" style="margin-bottom:18px;">${presencaHtml}</div>
+        <div style="text-align:center;font-size:11px;color:var(--muted);line-height:1.5;">Essa página é atualizada pelo seu personal. Qualquer dúvida, fale com ele diretamente.</div>
+      </div>
+    </div>
+  `;
+  const btnAval = document.getElementById('btnVerAvaliacaoAluno');
+  if(btnAval) btnAval.onclick = ()=> window.__renderAlunoViewAvaliacao(dados);
+};
+window.__renderAlunoViewAvaliacao = function(dados){
+  window.scrollTo(0,0);
+  const navEl = document.querySelector('nav');
+  if(navEl) navEl.style.display = 'none';
+  const main = document.getElementById('main');
+
+  const avs = (dados.avaliacoes||[]).filter(a=>a.data);
+  const pesos = avs.map(a=>parseFloat(String(a.peso||'').replace(',','.'))).filter(n=>!isNaN(n));
+  let chartHtml = '<div class="empty" style="padding:14px 0;">Sem dados de peso suficientes pra mostrar o gráfico.</div>';
+  if(pesos.length>=2){
+    const w = 260, h = 70;
+    const min = Math.min(...pesos), max = Math.max(...pesos);
+    const range = (max-min) || 1;
+    const stepX = w/(pesos.length-1);
+    const pontos = pesos.map((p,i)=> ({x: i*stepX, y: h - ((p-min)/range)*h, p}));
+    const linha = pontos.map(pt=> `${pt.x.toFixed(1)},${pt.y.toFixed(1)}`).join(' ');
+    const circulos = pontos.map(pt=> `<circle cx="${pt.x.toFixed(1)}" cy="${pt.y.toFixed(1)}" r="3" fill="var(--accent)"></circle>`).join('');
+    chartHtml = `
+      <svg viewBox="-8 -14 276 100" style="width:100%;height:auto;display:block;">
+        <text x="0" y="-2" font-size="11" fill="var(--muted)">${pesos[0].toFixed(1)} kg</text>
+        <text x="200" y="86" font-size="11" fill="var(--accent)" font-weight="600">${pesos[pesos.length-1].toFixed(1)} kg</text>
+        <polyline points="${linha}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></polyline>
+        ${circulos}
+      </svg>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:4px;">
+        <span>${formatDate(avs[0].data)}</span>
+        <span>${formatDate(avs[avs.length-1].data)}</span>
+      </div>
+    `;
+  }
+  const ultima = avs[avs.length-1] || {};
+  const stat = (label,val,unit)=> val ? `<div style="background:var(--panel2);border-radius:10px;padding:10px;text-align:center;"><div style="font-size:15px;font-weight:600;">${escapeHtml(String(val))}${unit||''}</div><div style="font-size:10px;color:var(--muted);">${label}</div></div>` : '';
+
+  main.innerHTML = `
+    <div style="max-width:480px;margin:0 auto;">
+      ${alunoViewHeaderHtml()}
+      <div style="padding:20px;">
+        <a href="#" id="voltarAlunoView" style="color:var(--muted);font-size:12px;text-decoration:none;display:inline-block;margin-bottom:14px;">&larr; Voltar</a>
+        <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px;">Evolução de peso</div>
+        <div class="card" style="margin-bottom:18px;">${chartHtml}</div>
+        <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px;">Última avaliação${ultima.data?(' · '+formatDate(ultima.data)):''}</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:18px;">
+          ${stat('Peso',ultima.peso,'kg')}
+          ${stat('% Gordura',ultima.percGordura,'%')}
+          ${stat('Cintura',ultima.circCintura,'cm')}
+          ${stat('Quadril',ultima.circQuadril,'cm')}
+          ${stat('Braço',ultima.circBraco,'cm')}
+          ${stat('Coxa',ultima.circCoxa,'cm')}
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('voltarAlunoView').onclick = (e)=>{ e.preventDefault(); window.__renderAlunoView(dados); };
+};
+
 window.__fitproReady = function(cloudData, uid, email, licenca){
   window.scrollTo(0,0);
   currentUid = uid;
@@ -4825,10 +5109,45 @@ async function verificarLicenca(uid, email){
 // os dados em tela por uma versão possivelmente desatualizada (ex.: de antes de um salvamento terminar).
 // Se o link do e-mail de troca de e-mail voltou pro app (mode=verifyAndChangeEmail&oobCode=...),
 // mostra a tela de confirmação em vez do fluxo normal de login/app.
+// Link de acompanhamento do aluno: uma página só de leitura, sem precisar de login,
+// acessada via ?aluno=TOKEN. O documento em alunoLinks/{token} é público pra LEITURA
+// (regra do Firestore: allow read: if true), mas só o professor autenticado consegue
+// criar/atualizar/apagar o dele (regra checa trainerUid === request.auth.uid).
+async function abrirAlunoView(token){
+  window.__fitproMostrandoAlunoView = true;
+  if(window.__renderAlunoViewLoading) window.__renderAlunoViewLoading();
+  try {
+    const snap = await getDoc(doc(dbFire, 'alunoLinks', token));
+    if(!snap.exists()){
+      if(window.__renderAlunoViewInvalido) window.__renderAlunoViewInvalido();
+      return;
+    }
+    if(window.__renderAlunoView) window.__renderAlunoView(snap.data());
+  } catch(e){
+    console.error('Erro ao carregar link do aluno', e);
+    if(window.__renderAlunoViewInvalido) window.__renderAlunoViewInvalido();
+  }
+}
+window.__syncAlunoLinks = (payloads) => {
+  (payloads||[]).forEach(({token, payload})=>{
+    if(!token) return;
+    setDoc(doc(dbFire, 'alunoLinks', token), payload).catch(e=> console.error('Erro ao sincronizar link do aluno', e));
+  });
+};
+window.__deleteAlunoLink = (token) => {
+  if(!token) return Promise.resolve();
+  return deleteDoc(doc(dbFire, 'alunoLinks', token)).catch(e=> console.error('Erro ao revogar link do aluno', e));
+};
+
 (function checarLinkDeAcao(){
   const params = new URLSearchParams(window.location.search);
   const modo = params.get('mode');
   const oobCode = params.get('oobCode');
+  const tokenAluno = params.get('aluno');
+  if(tokenAluno){
+    abrirAlunoView(tokenAluno);
+    return;
+  }
   if(modo === 'verifyAndChangeEmail' && oobCode && window.__showConfirmarEmail){
     window.__showConfirmarEmail(oobCode);
   }
@@ -4836,6 +5155,7 @@ async function verificarLicenca(uid, email){
 
 let uidCarregado = null;
 onAuthStateChanged(auth, async (user) => {
+  if(window.__fitproMostrandoAlunoView) return; // mostrando a página de acompanhamento do aluno (sem login), não sobrescrever
   if(window.__fitproMostrandoConfirmacaoEmail) return; // aguardando confirmação do link de e-mail, não sobrescrever a tela
   if(user){
     if(user.uid === uidCarregado) return; // mesmo usuário já carregado — evento repetido, ignorar
