@@ -209,6 +209,8 @@
   .savingIndicator{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);}
   .savingSpin{width:10px;height:10px;border-radius:50%;border:2px solid var(--accent);border-top-color:transparent;display:inline-block;animation:girarSalvando .7s linear infinite;}
   @keyframes girarSalvando{to{transform:rotate(360deg);}}
+  .loadingLogo{width:40px;height:40px;border-radius:10px;background:var(--accent);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;animation:pulsarLoading 1.4s ease-in-out infinite;}
+  @keyframes pulsarLoading{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.55;transform:scale(.92);}}
   .fichaHeader{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
   .fichaTag{width:34px;height:34px;border-radius:8px;background:var(--accent2);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;}
   .exRow{border:1px solid var(--line);border-radius:9px;padding:12px;margin-bottom:10px;background:var(--panel2);}
@@ -358,7 +360,7 @@
     <div id="navUsuario" style="padding:10px 20px;font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 0 auto;max-width:220px;"></div>
     <div id="navTeste" style="padding:0 20px 10px;font-size:11px;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 0 auto;max-width:220px;"></div>
   </nav>
-  <main id="main"><div style="text-align:center;margin-top:100px;color:var(--muted);">Carregando…</div></main>
+  <main id="main"><div style="text-align:center;margin-top:100px;"><div class="loadingLogo"><span style="color:#fff;font-size:15px;font-weight:600;">P</span></div><div style="color:var(--muted);font-size:13px;">Sincronizando seus dados...</div></div></main>
 </div>
 
 <div class="modalBg" id="modalBg">
@@ -1206,7 +1208,7 @@ function renderTreinoAoVivo(studentId, fichaId){
 
 // ---------- STUDENTS LIST ----------
 function emptyStudentsHtml(){
-  return `<div class="emptyState"><div class="emptyStateIcon">+</div><div class="emptyStateTitle">Nenhum aluno ainda</div><div class="emptyStateText">Cadastre seu primeiro aluno para começar a montar fichas de treino.</div><button id="btnEmptyAddStudent">Cadastrar aluno</button></div>`;
+  return `<div class="emptyState"><div class="emptyStateIcon"><i class="ti ti-user-plus"></i></div><div class="emptyStateTitle">Nenhum aluno ainda</div><div class="emptyStateText">Cadastre seu primeiro aluno para começar a montar fichas de treino.</div><button id="btnEmptyAddStudent">Cadastrar aluno</button></div>`;
 }
 function studentCardHtml(s){
   const status = s.status || 'ativo';
@@ -1290,6 +1292,13 @@ function renderStudentsList(){
 
 function renderPagamentos(){
   const alunos = db.students.filter(s=>(s.status||'ativo')==='ativo').slice().sort((a,b)=>a.nome.localeCompare(b.nome));
+  if(alunos.length===0){
+    return `
+      <h2>Pagamentos</h2>
+      <div class="sub">Controle de mensalidade dos alunos: status, método de pagamento e nota fiscal.</div>
+      <div class="emptyState"><div class="emptyStateIcon"><i class="ti ti-wallet"></i></div><div class="emptyStateTitle">Nenhum pagamento por aqui ainda</div><div class="emptyStateText">Assim que você tiver alunos ativos, os pagamentos do mês aparecem aqui.</div><button id="btnEmptyPagamentosVerAlunos">Ver alunos</button></div>
+    `;
+  }
   const linhas = alunos.map(s=>{
     const situacao = statusPagamentoAluno(s);
     const cfg = s.pagamento || {};
@@ -1637,6 +1646,13 @@ function renderAgenda(){
   if(!state.agendaRef) state.agendaRef = isoHoje();
   const hojeISO = isoHoje();
   const alunos = db.students.filter(s=>(s.status||'ativo')==='ativo');
+  if(alunos.length===0){
+    return `
+      <h2><i class="ti ti-calendar"></i> Agenda</h2>
+      <div class="sub">Calendário com os horários de treino de cada aluno.</div>
+      <div class="emptyState"><div class="emptyStateIcon"><i class="ti ti-calendar-plus"></i></div><div class="emptyStateTitle">Sua agenda tá livre</div><div class="emptyStateText">Cadastre um aluno pra começar a marcar horários de treino.</div><button id="btnEmptyAgendaVerAlunos">Ver alunos</button></div>
+    `;
+  }
   const refDate = new Date(state.agendaRef+'T00:00:00');
 
   let titulo = '', corpo = '';
@@ -2328,7 +2344,7 @@ function renderStudentDetail(id){
       ${fichas.length>0 ? `<span class="tag gray" id="volTotalAluno" style="margin-left:auto;"><i class="ti ti-barbell"></i> Volume total (todas as fichas): ${formatVolume(fichas.reduce((sum,f)=>sum+volumeTotalFicha(f),0))}kg</span>` : ''}
     </div>
     <div class="collapsibleContent" style="display:${state.collapsedSections.fichas?'none':'block'};">
-      ${fichasHtml || '<div class="emptyState"><div class="emptyStateIcon">+</div><div class="emptyStateTitle">Nenhuma ficha ativa</div><div class="emptyStateText">Crie a primeira ficha de treino para este aluno ou veja as fichas arquivadas.</div><button id="btnEmptyNewFicha">+ Nova ficha de treino</button></div>'}
+      ${fichasHtml || '<div class="emptyState"><div class="emptyStateIcon"><i class="ti ti-clipboard-plus"></i></div><div class="emptyStateTitle">Nenhuma ficha ativa</div><div class="emptyStateText">Crie a primeira ficha de treino para este aluno ou veja as fichas arquivadas.</div><button id="btnEmptyNewFicha">+ Nova ficha de treino</button></div>'}
     </div>
 
     <div class="sectionTitle">
@@ -2579,6 +2595,10 @@ function bindEvents(){
   if(btnAddStudent) btnAddStudent.onclick = ()=> openStudentModal();
   const btnEmptyAddStudent = document.getElementById('btnEmptyAddStudent');
   if(btnEmptyAddStudent) btnEmptyAddStudent.onclick = ()=> openStudentModal();
+  const btnEmptyPagamentosVerAlunos = document.getElementById('btnEmptyPagamentosVerAlunos');
+  if(btnEmptyPagamentosVerAlunos) btnEmptyPagamentosVerAlunos.onclick = ()=>{ state.tab = 'alunos'; state.studentId = null; render(); };
+  const btnEmptyAgendaVerAlunos = document.getElementById('btnEmptyAgendaVerAlunos');
+  if(btnEmptyAgendaVerAlunos) btnEmptyAgendaVerAlunos.onclick = ()=>{ state.tab = 'alunos'; state.studentId = null; render(); };
 
   const btnEditStudent = document.getElementById('btnEditStudent');
   if(btnEditStudent) btnEditStudent.onclick = ()=> openStudentModal(db.students.find(s=>s.id===state.studentId));
