@@ -183,15 +183,18 @@
   .studentCard:hover{border-color:var(--accent);}
   .studentCard h3{margin:0 0 4px;font-size:16px;font-weight:600;}
   .studentCard .meta{color:var(--muted);font-size:12px;}
+  .studentCardRow{display:flex;gap:12px;align-items:flex-start;}
+  .studentCardBody{flex:1;min-width:0;}
+  .studentAvatar{width:40px;height:40px;border-radius:50%;background:var(--panel2);color:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;font-weight:600;}
   .dashGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;}
   @media (max-width:760px){ .dashGrid{grid-template-columns:1fr;} }
-  .dashCard{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:10px;padding:14px;cursor:pointer;transition:.15s;}
+  .dashCard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 14px;cursor:pointer;transition:.15s;}
   .dashCard:hover{border-color:var(--accent);}
-  .dashCard.danger{border-left-color:var(--red);}
-  .dashCard.warning{border-left-color:var(--yellow);}
-  .dashCardIcon{font-size:17px;margin-bottom:8px;}
-  .dashCardValue{font-size:22px;font-weight:600;color:var(--text);}
-  .dashCardLabel{font-size:12px;color:var(--muted);}
+  .dashCardIcon{width:32px;height:32px;border-radius:8px;background:var(--panel2);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:16px;margin-bottom:10px;}
+  .dashCard.danger .dashCardIcon{background:#fbe8e8;color:var(--red);}
+  .dashCard.warning .dashCardIcon{background:#fdf3d8;color:var(--yellow);}
+  .dashCardValue{font-size:30px;font-weight:500;color:var(--text);line-height:1;}
+  .dashCardLabel{font-size:12px;color:var(--muted);margin-top:6px;}
   .dashPanels{display:grid;grid-template-columns:1.1fr 1fr;gap:14px;}
   @media (max-width:760px){ .dashPanels{grid-template-columns:1fr;} }
   .landingHero{display:grid;grid-template-columns:1.1fr 1fr;gap:36px;align-items:center;max-width:1000px;margin:0 auto;padding:24px 32px 56px;}
@@ -1215,15 +1218,20 @@ function studentCardHtml(s){
   const reaval = reavaliacaoStatus(s);
   return `
     <div class="studentCard" data-open-student="${s.id}">
-      <div class="row" style="justify-content:space-between;align-items:flex-start;">
-        <h3 style="margin:0 0 4px;">${escapeHtml(s.nome)}</h3>
-        <div class="row" style="gap:4px;">
-          ${status==='pausado' ? '<span class="tag gray">PAUSADO</span>' : ''}
-          ${reaval && reaval.atrasada ? '<span class="tag yellow"><i class="ti ti-alert-triangle"></i> Reavaliação</span>' : ''}
+      <div class="studentCardRow">
+        <div class="studentAvatar">${iniciaisNome(s.nome)}</div>
+        <div class="studentCardBody">
+          <div class="row" style="justify-content:space-between;align-items:flex-start;">
+            <h3 style="margin:0 0 4px;">${escapeHtml(s.nome)}</h3>
+            <div class="row" style="gap:4px;">
+              ${status==='pausado' ? '<span class="tag gray">PAUSADO</span>' : ''}
+              ${reaval && reaval.atrasada ? '<span class="tag yellow"><i class="ti ti-alert-triangle"></i> Reavaliação</span>' : ''}
+            </div>
+          </div>
+          <div class="meta">${escapeHtml(s.objetivo||'Sem objetivo definido')}</div>
+          <div class="meta">${(s.fichas||[]).filter(f=>f.ativa).length} ficha(s) ativa(s) • ${(s.fichas||[]).length} total</div>
         </div>
       </div>
-      <div class="meta">${escapeHtml(s.objetivo||'Sem objetivo definido')}</div>
-      <div class="meta">${(s.fichas||[]).filter(f=>f.ativa).length} ficha(s) ativa(s) • ${(s.fichas||[]).length} total</div>
     </div>
   `;
 }
@@ -4060,6 +4068,12 @@ function escapeHtml(str){
   return String(str??'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
 function escapeAttr(str){ return escapeHtml(str); }
+function iniciaisNome(nome){
+  const partes = String(nome||'').trim().split(/\s+/).filter(Boolean);
+  if(partes.length===0) return '?';
+  if(partes.length===1) return partes[0].slice(0,2).toUpperCase();
+  return (partes[0][0] + partes[partes.length-1][0]).toUpperCase();
+}
 
 function whatsappLink(numero, mensagem){
   if(!numero) return null;
