@@ -201,11 +201,15 @@
   .landingHero{display:grid;grid-template-columns:1.1fr 1fr;gap:36px;align-items:center;max-width:1000px;margin:0 auto;padding:44px 32px 56px;background:linear-gradient(180deg,var(--panel2) 0%,var(--bg) 100%);}
   .landingSteps{display:flex;align-items:flex-start;gap:8px;max-width:920px;margin:0 auto;}
   .landingStepLine{width:24px;height:1px;background:var(--line);margin-top:19px;}
+  .landingScreensGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;max-width:1000px;margin:0 auto;}
+  .landingFooterGrid{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:28px;max-width:1000px;margin:0 auto;}
   @media (max-width:700px){
     .landingHero{grid-template-columns:1fr;gap:24px;padding:20px 20px 40px;}
     .landingSteps{flex-wrap:wrap;row-gap:28px;}
     .landingSteps > div{flex:1 1 40%;min-width:130px;}
     .landingStepLine{display:none;}
+    .landingScreensGrid{grid-template-columns:repeat(2,1fr);}
+    .landingFooterGrid{grid-template-columns:1fr;gap:20px;}
   }
   .dashListRow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;cursor:pointer;}
   .dashListRow:last-child{border-bottom:none;}
@@ -4359,10 +4363,10 @@ function renderLandingScreen(){
         <span style="display:inline-block;background:var(--panel2);color:var(--accent2);font-size:12px;font-weight:600;padding:4px 12px;border-radius:20px;margin-bottom:16px;">Para personal trainers e estúdios</span>
         <h1 style="font-size:28px;font-weight:600;margin:0 0 12px;line-height:1.3;">Seus alunos, treinos e pagamentos organizados em um só lugar</h1>
         <div class="sub" style="font-size:15px;margin:0 0 24px;line-height:1.6;">Chega de planilha espalhada e caderno de anotações. Monte fichas, acompanhe evolução e controle a agenda e os pagamentos direto do celular.</div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
-          <a href="${linkWhats}" target="_blank" rel="noopener" style="${btnPrimary}">Quero conhecer</a>
-          <a href="#landingComoFunciona" style="${btnSecondary}">Ver como funciona</a>
+        <div style="margin-bottom:8px;">
+          <a href="${linkWhats}" target="_blank" rel="noopener" style="${btnPrimary};box-shadow:0 6px 16px rgba(110,45,231,.22);padding:12px 26px;font-size:15px;">Quero conhecer</a>
         </div>
+        <a href="#landingComoFunciona" style="display:block;font-size:12.5px;color:var(--muted);text-decoration:underline;margin-bottom:14px;">Ver como funciona ↓</a>
         <div style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;">
           <i class="ti ti-circle-check" style="color:var(--green);font-size:14px;"></i>
           14 dias grátis pra testar, sem compromisso
@@ -4457,13 +4461,95 @@ function renderLandingScreen(){
       </div>
     </div>
 
+    <div style="padding:48px 32px 8px;">
+      <div style="text-align:center;font-size:16px;font-weight:600;margin:0 0 8px;">Conheça o app por dentro</div>
+      <div style="text-align:center;font-size:13px;color:var(--muted);margin:0 0 28px;">As telas que você e seus alunos vão usar no dia a dia.</div>
+      <div class="landingScreensGrid">
+        <div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;">
+          <div style="padding:12px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;">
+              <div style="background:var(--panel2);border-radius:6px;padding:6px;">
+                <div style="font-size:13px;font-weight:700;color:var(--accent2);">24</div>
+                <div style="font-size:7.5px;color:var(--muted);">alunos</div>
+              </div>
+              <div style="background:rgba(52,211,153,.15);border-radius:6px;padding:6px;">
+                <div style="font-size:13px;font-weight:700;color:var(--green);">18</div>
+                <div style="font-size:7.5px;color:var(--muted);">em dia</div>
+              </div>
+            </div>
+            <div style="background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:5px 7px;margin-bottom:4px;font-size:9px;display:flex;justify-content:space-between;align-items:center;">
+              <span>João · Ficha A</span><i class="ti ti-circle-check" style="color:var(--green);font-size:9px;"></i>
+            </div>
+            <div style="background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:5px 7px;font-size:9px;display:flex;justify-content:space-between;align-items:center;">
+              <span>Ana · Avaliação</span><i class="ti ti-clock" style="color:var(--yellow);font-size:9px;"></i>
+            </div>
+          </div>
+          <div style="padding:9px 10px;border-top:1px solid var(--line);font-size:11.5px;font-weight:600;text-align:center;color:var(--muted);">Início</div>
+        </div>
+        <div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;">
+          <div style="padding:12px;">
+            <table style="width:100%;border-collapse:collapse;font-size:8px;">
+              <tr>
+                <th style="background:var(--panel2);color:var(--accent2);padding:3px 4px;text-align:left;font-weight:700;">Exerc.</th>
+                <th style="background:var(--panel2);color:var(--accent2);padding:3px 4px;text-align:left;font-weight:700;">Séries</th>
+                <th style="background:var(--panel2);color:var(--accent2);padding:3px 4px;text-align:left;font-weight:700;">Carga</th>
+              </tr>
+              <tr>
+                <td style="padding:3px 4px;border-bottom:1px solid var(--line);">Supino</td>
+                <td style="padding:3px 4px;border-bottom:1px solid var(--line);">4</td>
+                <td style="padding:3px 4px;border-bottom:1px solid var(--line);">40kg</td>
+              </tr>
+              <tr>
+                <td style="padding:3px 4px;border-bottom:1px solid var(--line);">Puxada</td>
+                <td style="padding:3px 4px;border-bottom:1px solid var(--line);">4</td>
+                <td style="padding:3px 4px;border-bottom:1px solid var(--line);">35kg</td>
+              </tr>
+              <tr>
+                <td style="padding:3px 4px;">Agachamento</td>
+                <td style="padding:3px 4px;">4</td>
+                <td style="padding:3px 4px;">50kg</td>
+              </tr>
+            </table>
+          </div>
+          <div style="padding:9px 10px;border-top:1px solid var(--line);font-size:11.5px;font-weight:600;text-align:center;color:var(--muted);">Ficha de treino</div>
+        </div>
+        <div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;">
+          <div style="padding:12px;">
+            <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:3px;">
+              <div style="background:var(--bg);border-radius:4px;padding:3px;font-size:6.5px;text-align:center;"><div style="font-weight:700;margin-bottom:2px;">SEG</div><div style="background:var(--green);color:#fff;border-radius:3px;padding:1px 2px;">08h</div></div>
+              <div style="background:var(--bg);border-radius:4px;padding:3px;font-size:6.5px;text-align:center;"><div style="font-weight:700;margin-bottom:2px;">TER</div><div style="background:var(--yellow);color:#fff;border-radius:3px;padding:1px 2px;">17h</div></div>
+              <div style="background:var(--bg);border-radius:4px;padding:3px;font-size:6.5px;text-align:center;"><div style="font-weight:700;margin-bottom:2px;">QUA</div><div style="background:var(--green);color:#fff;border-radius:3px;padding:1px 2px;">08h</div></div>
+              <div style="background:var(--bg);border-radius:4px;padding:3px;font-size:6.5px;text-align:center;"><div style="font-weight:700;margin-bottom:2px;">QUI</div></div>
+              <div style="background:var(--bg);border-radius:4px;padding:3px;font-size:6.5px;text-align:center;"><div style="font-weight:700;margin-bottom:2px;">SEX</div><div style="background:var(--green);color:#fff;border-radius:3px;padding:1px 2px;">19h</div></div>
+            </div>
+          </div>
+          <div style="padding:9px 10px;border-top:1px solid var(--line);font-size:11.5px;font-weight:600;text-align:center;color:var(--muted);">Agenda</div>
+        </div>
+        <div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;">
+          <div style="padding:12px;">
+            <div style="display:flex;align-items:center;gap:5px;background:var(--panel2);border-radius:6px;padding:5px 6px;margin-bottom:6px;">
+              <div style="width:16px;height:16px;border-radius:50%;background:var(--accent);color:#fff;font-size:6px;display:flex;align-items:center;justify-content:center;font-weight:700;">JO</div>
+              <span style="font-size:8px;">João · Treino A ativo</span>
+            </div>
+            <div style="background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:5px 7px;margin-bottom:4px;font-size:9px;display:flex;justify-content:space-between;align-items:center;">
+              <span>Próximo treino</span><span>Qua · 08h</span>
+            </div>
+            <div style="background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:5px 7px;font-size:9px;display:flex;justify-content:space-between;align-items:center;">
+              <span>Presença no mês</span><span style="color:var(--green);">92%</span>
+            </div>
+          </div>
+          <div style="padding:9px 10px;border-top:1px solid var(--line);font-size:11.5px;font-weight:600;text-align:center;color:var(--muted);">Link do aluno</div>
+        </div>
+      </div>
+    </div>
+
     <div id="landingComoFunciona" style="max-width:1000px;margin:0 auto;padding:48px 32px;">
       <div style="text-align:center;font-size:16px;font-weight:600;margin:0 0 8px;">Como funciona</div>
       <div style="text-align:center;font-size:13px;color:var(--muted);margin:0 0 36px;">Do primeiro cadastro ao contato com o aluno, em quatro passos.</div>
       <div class="landingSteps">
         <div style="flex:1;text-align:center;">
           <div style="position:relative;width:38px;height:38px;margin:0 auto 12px;">
-            <div style="width:38px;height:38px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;">
+            <div style="width:38px;height:38px;border-radius:10px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;">
               <i class="ti ti-user-plus" style="font-size:17px;color:#fff;"></i>
             </div>
             <div style="position:absolute;top:-4px;right:-4px;width:17px;height:17px;border-radius:50%;background:var(--panel);border:2px solid var(--accent);color:var(--accent);font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;">1</div>
@@ -4474,7 +4560,7 @@ function renderLandingScreen(){
         <div class="landingStepLine"></div>
         <div style="flex:1;text-align:center;">
           <div style="position:relative;width:38px;height:38px;margin:0 auto 12px;">
-            <div style="width:38px;height:38px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;">
+            <div style="width:38px;height:38px;border-radius:10px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;">
               <i class="ti ti-barbell" style="font-size:17px;color:#fff;"></i>
             </div>
             <div style="position:absolute;top:-4px;right:-4px;width:17px;height:17px;border-radius:50%;background:var(--panel);border:2px solid var(--accent);color:var(--accent);font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;">2</div>
@@ -4485,7 +4571,7 @@ function renderLandingScreen(){
         <div class="landingStepLine"></div>
         <div style="flex:1;text-align:center;">
           <div style="position:relative;width:38px;height:38px;margin:0 auto 12px;">
-            <div style="width:38px;height:38px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;">
+            <div style="width:38px;height:38px;border-radius:10px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;">
               <i class="ti ti-chart-bar" style="font-size:17px;color:#fff;"></i>
             </div>
             <div style="position:absolute;top:-4px;right:-4px;width:17px;height:17px;border-radius:50%;background:var(--panel);border:2px solid var(--accent);color:var(--accent);font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;">3</div>
@@ -4496,7 +4582,7 @@ function renderLandingScreen(){
         <div class="landingStepLine"></div>
         <div style="flex:1;text-align:center;">
           <div style="position:relative;width:38px;height:38px;margin:0 auto 12px;">
-            <div style="width:38px;height:38px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;">
+            <div style="width:38px;height:38px;border-radius:10px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;">
               <i class="ti ti-brand-whatsapp" style="font-size:17px;color:#fff;"></i>
             </div>
             <div style="position:absolute;top:-4px;right:-4px;width:17px;height:17px;border-radius:50%;background:var(--panel);border:2px solid var(--accent);color:var(--accent);font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;">4</div>
@@ -4507,7 +4593,7 @@ function renderLandingScreen(){
       </div>
     </div>
 
-    <div style="max-width:640px;margin:0 auto;padding:48px 32px 56px;">
+    <div id="landingFaq" style="max-width:640px;margin:0 auto;padding:48px 32px 56px;">
       <div style="text-align:center;font-size:16px;font-weight:600;margin:0 0 8px;">Perguntas frequentes</div>
       <div style="text-align:center;font-size:13px;color:var(--muted);margin:0 0 24px;">Tudo que você precisa saber antes de começar.</div>
       <div style="display:flex;flex-direction:column;gap:8px;">
@@ -4537,17 +4623,33 @@ function renderLandingScreen(){
       <a href="#" id="linkEntrarRodape" style="${btnPrimary}">Entrar no PerFit</a>
     </div>
 
-    <div style="background:var(--panel2);padding:32px;text-align:center;border-top:1px solid var(--line);">
-      <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:14px;">
-        <img src="${appIconUrl()}" alt="" style="width:22px;height:22px;border-radius:6px;">
-        <span style="font-size:14px;font-weight:600;color:var(--accent);">PerFit</span>
+    <div style="background:var(--panel2);padding:36px 32px;border-top:1px solid var(--line);">
+      <div class="landingFooterGrid">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+            <img src="${appIconUrl()}" alt="" style="width:24px;height:24px;border-radius:6px;">
+            <span style="font-size:15px;font-weight:600;color:var(--accent);">PerFit</span>
+          </div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.6;max-width:280px;">Gestão completa pra personal trainers e estúdios: fichas de treino, agenda, avaliação física e pagamentos, tudo em um só lugar, direto do celular.</div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:600;margin:0 0 10px;">Produto</div>
+          <a href="#landingComoFunciona" style="display:block;font-size:12px;color:var(--muted);text-decoration:none;margin-bottom:8px;">Como funciona</a>
+          <a href="#landingFaq" style="display:block;font-size:12px;color:var(--muted);text-decoration:none;">Perguntas frequentes</a>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:600;margin:0 0 10px;">Contato</div>
+          <a href="https://www.instagram.com/perfitmanager" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);text-decoration:none;margin-bottom:8px;">
+            <i class="ti ti-brand-instagram" style="font-size:14px;"></i> Instagram
+          </a>
+          <a href="mailto:perfitmanager@gmail.com" style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);text-decoration:none;">
+            <i class="ti ti-mail" style="font-size:14px;"></i> perfitmanager@gmail.com
+          </a>
+        </div>
       </div>
-      <div style="font-size:12px;color:var(--muted);margin:0 0 12px;display:flex;align-items:center;justify-content:center;gap:6px;">
-        <i class="ti ti-mail" style="font-size:14px;"></i>
-        perfitmanager@gmail.com
-      </div>
-      <div style="font-size:11px;color:var(--muted);opacity:.8;">
-        © ${new Date().getFullYear()} PerFit <span style="margin:0 6px;">·</span> Política de privacidade <span style="opacity:.7;">(em breve)</span>
+      <div style="max-width:1000px;margin:20px auto 0;padding-top:16px;border-top:1px solid var(--line);font-size:11px;color:var(--muted);opacity:.8;display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+        <span>© ${new Date().getFullYear()} PerFit <span style="margin:0 6px;">·</span> Política de privacidade <span style="opacity:.7;">(em breve)</span></span>
+        <span>perfitmanager.com.br</span>
       </div>
     </div>
   `;
