@@ -307,6 +307,18 @@
     .evalCard > div:last-child{flex-direction:row !important;width:100%;}
     .evalCard > div:last-child button{flex:1;}
     .studentList{grid-template-columns:1fr 1fr;}
+
+    /* Tabela de exercícios da ficha vira cartões empilhados, em vez de rolar de lado */
+    .fichaTableWrap table{min-width:0;}
+    .fichaTableWrap table, .fichaTableWrap thead, .fichaTableWrap tbody, .fichaTableWrap tr, .fichaTableWrap td{display:block;width:100%;}
+    .fichaTableWrap thead{display:none;}
+    .fichaTableWrap tr{border:1px solid var(--line);border-radius:10px;padding:4px 12px;margin-bottom:10px;background:var(--panel);}
+    .fichaTableWrap tr[style*="panel2"]{border-color:var(--accent);}
+    .fichaTableWrap td{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);text-align:right;}
+    .fichaTableWrap td:last-child{border-bottom:none;}
+    .fichaTableWrap td::before{content:attr(data-label);font-size:11px;font-weight:600;color:var(--muted);text-align:left;flex-shrink:0;}
+    .fichaTableWrap td .inlineEdit{text-align:right;}
+    .fichaTableWrap .scrollHint{display:none;}
   }
   @media (max-width: 460px){
     .studentList{grid-template-columns:1fr;}
@@ -2293,17 +2305,17 @@ function renderStudentDetail(id){
       const anteriorEx = f.exercicios[idxEx-1];
       const destacadoEx = e.encadeado || (anteriorEx && anteriorEx.encadeado);
       return `<tr style="${destacadoEx?'background:var(--panel2);border-left:3px solid var(--accent);':''}">
-            <td class="noprint"><input type="checkbox" data-toggle-exec="${f.id}|${e.id}" ${e.feito?'checked':''} style="width:18px;height:18px;cursor:pointer;"></td>
-            <td style="${e.feito?'text-decoration:line-through;color:var(--muted);':''}">${escapeHtml(e.nome)} ${e.video?`<a href="${escapeAttr(e.video)}" target="_blank" rel="noopener" class="noprint" title="Ver vídeo de execução" style="text-decoration:none;"><i class="ti ti-video"></i></a>`:''}</td>
-            <td>${escapeHtml(e.grupo||'-')}</td>
-            <td><input class="inlineEdit noprint-border" data-field-exec="${f.id}|${e.id}|series" value="${escapeAttr(e.series||'')}" placeholder="-"></td>
-            <td><input class="inlineEdit noprint-border" data-field-exec="${f.id}|${e.id}|reps" value="${escapeAttr(e.reps||'')}" placeholder="-"></td>
-            <td><input class="inlineEdit noprint-border" data-field-exec="${f.id}|${e.id}|obs" value="${escapeAttr(e.obs||'')}" placeholder="-"></td>
-            <td><input class="inlineEdit noprint-border" data-field-exec="${f.id}|${e.id}|descanso" value="${escapeAttr(e.descanso||'')}" placeholder="Ex: 60s"></td>
-            <td><input class="inlineEdit noprint-border" data-field-exec="${f.id}|${e.id}|metodo" value="${escapeAttr(e.metodo||'')}" placeholder="Ex: Bi-set"></td>
-            <td class="noprint"><input type="checkbox" data-toggle-encadeado="${f.id}|${e.id}" ${e.encadeado?'checked':''} title="Encadear com o próximo (sem descanso)" style="width:18px;height:18px;cursor:pointer;"></td>
-            <td id="vol-${f.id}-${e.id}" style="color:var(--muted);">${formatVolume(calcularVolumeExercicio(e))}</td>
-            <td>
+            <td class="noprint" data-label="Feito"><input type="checkbox" data-toggle-exec="${f.id}|${e.id}" ${e.feito?'checked':''} style="width:18px;height:18px;cursor:pointer;"></td>
+            <td data-label="Exercício" style="${e.feito?'text-decoration:line-through;color:var(--muted);':''}">${escapeHtml(e.nome)} ${e.video?`<a href="${escapeAttr(e.video)}" target="_blank" rel="noopener" class="noprint" title="Ver vídeo de execução" style="text-decoration:none;"><i class="ti ti-video"></i></a>`:''}</td>
+            <td data-label="Grupo">${escapeHtml(e.grupo||'-')}</td>
+            <td data-label="Séries"><input class="inlineEdit noprint-border" data-field-exec="${f.id}|${e.id}|series" value="${escapeAttr(e.series||'')}" placeholder="-"></td>
+            <td data-label="Reps"><input class="inlineEdit noprint-border" data-field-exec="${f.id}|${e.id}|reps" value="${escapeAttr(e.reps||'')}" placeholder="-"></td>
+            <td data-label="Carga"><input class="inlineEdit noprint-border" data-field-exec="${f.id}|${e.id}|obs" value="${escapeAttr(e.obs||'')}" placeholder="-"></td>
+            <td data-label="Descanso"><input class="inlineEdit noprint-border" data-field-exec="${f.id}|${e.id}|descanso" value="${escapeAttr(e.descanso||'')}" placeholder="Ex: 60s"></td>
+            <td data-label="Método"><input class="inlineEdit noprint-border" data-field-exec="${f.id}|${e.id}|metodo" value="${escapeAttr(e.metodo||'')}" placeholder="Ex: Bi-set"></td>
+            <td class="noprint" data-label="Combo"><input type="checkbox" data-toggle-encadeado="${f.id}|${e.id}" ${e.encadeado?'checked':''} title="Encadear com o próximo (sem descanso)" style="width:18px;height:18px;cursor:pointer;"></td>
+            <td id="vol-${f.id}-${e.id}" data-label="Volume" style="color:var(--muted);">${formatVolume(calcularVolumeExercicio(e))}</td>
+            <td data-label="Anotações">
               <button type="button" class="secondary small noprint" data-open-note="${f.id}|${e.id}" style="${e.notas?'border-color:var(--yellow);color:var(--yellow);':''}">${e.notas?'<i class="ti ti-note"></i> Ver observação':'<i class="ti ti-note"></i> Observação'}</button>
               <span class="onlyPrint">${escapeHtml(e.notas||'-')}</span>
             </td>
