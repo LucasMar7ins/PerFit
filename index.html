@@ -170,7 +170,8 @@
   .banner{border:1px solid var(--yellow);background:rgba(251,191,36,.08);border-radius:9px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--text);display:flex;align-items:center;gap:10px;}
   .banner.danger{border-color:var(--red);background:rgba(220,38,38,.08);}
   .fichaTableWrap{position:relative;}
-  .scrollHint{display:none;}
+  .scrollHint{display:none;align-items:center;gap:4px;justify-content:flex-end;margin-top:6px;font-size:11px;color:var(--muted);}
+  .scrollHint i{color:var(--accent);}
   .compareCol{flex:1 1 240px;min-width:240px;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;}
   .compareCol table{font-size:13px;}
   .empty{color:var(--muted);text-align:center;padding:30px;font-size:14px;}
@@ -288,7 +289,7 @@
       border-left:none;border-bottom:3px solid transparent;
     }
     nav .tab.active{border-left:none;border-bottom-color:var(--accent);}
-    .scrollHint{display:flex;position:absolute;top:0;right:0;bottom:0;width:32px;align-items:center;justify-content:flex-end;padding-right:4px;background:linear-gradient(to right, rgba(255,255,255,0), var(--panel) 65%);color:var(--accent);font-size:14px;pointer-events:none;}
+    .scrollHint{display:flex;}
     main{padding:16px;max-width:100%;}
     h2{font-size:19px;}
     .card{padding:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;}
@@ -2343,7 +2344,7 @@ function renderStudentDetail(id){
           ${linhasExercicios}
         </tbody>
       </table>
-      <div class="scrollHint noprint">→</div>
+      <div class="scrollHint noprint"><i class="ti ti-arrow-right"></i> arraste para o lado</div>
       </div>
     </div>
   `;};
