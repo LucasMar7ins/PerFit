@@ -211,6 +211,11 @@
     .landingScreensGrid{grid-template-columns:repeat(2,1fr);}
     .landingFooterGrid{grid-template-columns:1fr;gap:20px;}
   }
+  .landingReveal{opacity:0;transform:translateY(16px);transition:opacity .5s ease, transform .5s ease;}
+  .landingReveal.show{opacity:1;transform:translateY(0);}
+  @media (prefers-reduced-motion: reduce){
+    .landingReveal{opacity:1;transform:none;transition:none;}
+  }
   .dashListRow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;cursor:pointer;}
   .dashListRow:last-child{border-bottom:none;}
   .dashListRow:hover span:first-child{color:var(--accent);}
@@ -4425,7 +4430,7 @@ function renderLandingScreen(){
       </div>
     </div>
 
-    <div style="background:var(--panel2);padding:44px 32px;">
+    <div class="landingReveal" style="background:var(--panel2);padding:44px 32px;">
       <div style="max-width:1000px;margin:0 auto;">
         <div style="text-align:center;font-size:12px;font-weight:600;letter-spacing:.04em;color:var(--muted);text-transform:uppercase;margin:0 0 24px;">Tudo que você precisa no dia a dia</div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;">
@@ -4461,7 +4466,7 @@ function renderLandingScreen(){
       </div>
     </div>
 
-    <div style="padding:48px 32px 8px;">
+    <div class="landingReveal" style="padding:48px 32px 8px;">
       <div style="text-align:center;font-size:16px;font-weight:600;margin:0 0 8px;">Conheça o app por dentro</div>
       <div style="text-align:center;font-size:13px;color:var(--muted);margin:0 0 28px;">As telas que você e seus alunos vão usar no dia a dia.</div>
       <div class="landingScreensGrid">
@@ -4543,7 +4548,7 @@ function renderLandingScreen(){
       </div>
     </div>
 
-    <div id="landingComoFunciona" style="max-width:1000px;margin:0 auto;padding:48px 32px;">
+    <div id="landingComoFunciona" class="landingReveal" style="max-width:1000px;margin:0 auto;padding:48px 32px;">
       <div style="text-align:center;font-size:16px;font-weight:600;margin:0 0 8px;">Como funciona</div>
       <div style="text-align:center;font-size:13px;color:var(--muted);margin:0 0 36px;">Do primeiro cadastro ao contato com o aluno, em quatro passos.</div>
       <div class="landingSteps">
@@ -4593,7 +4598,7 @@ function renderLandingScreen(){
       </div>
     </div>
 
-    <div id="landingFaq" style="max-width:640px;margin:0 auto;padding:48px 32px 56px;">
+    <div id="landingFaq" class="landingReveal" style="max-width:640px;margin:0 auto;padding:48px 32px 56px;">
       <div style="text-align:center;font-size:16px;font-weight:600;margin:0 0 8px;">Perguntas frequentes</div>
       <div style="text-align:center;font-size:13px;color:var(--muted);margin:0 0 24px;">Tudo que você precisa saber antes de começar.</div>
       <div style="display:flex;flex-direction:column;gap:8px;">
@@ -4611,19 +4616,19 @@ function renderLandingScreen(){
       </div>
     </div>
 
-    <div style="background:var(--accent);text-align:center;padding:44px 32px;">
+    <div class="landingReveal" style="background:var(--accent);text-align:center;padding:44px 32px;">
       <div style="font-size:19px;font-weight:600;color:#fff;margin:0 0 6px;">Pronto pra organizar seus alunos?</div>
       <div style="font-size:13px;color:#e3d9f9;margin:0 0 20px;">Fale com a gente e conheça o PerFit de perto.</div>
       <a href="${linkWhats}" target="_blank" rel="noopener" style="${btnOnAccent}">Quero conhecer</a>
     </div>
 
-    <div style="text-align:center;padding:40px 32px 48px;">
+    <div class="landingReveal" style="text-align:center;padding:40px 32px 48px;">
       <div style="font-size:16px;font-weight:600;margin:0 0 6px;">Já é cliente?</div>
       <div class="sub" style="margin-bottom:16px;">Entre com o e-mail e senha que você já usa.</div>
       <a href="#" id="linkEntrarRodape" style="${btnPrimary}">Entrar no PerFit</a>
     </div>
 
-    <div style="background:var(--panel2);padding:36px 32px;border-top:1px solid var(--line);">
+    <div class="landingReveal" style="background:var(--panel2);padding:36px 32px;border-top:1px solid var(--line);">
       <div class="landingFooterGrid">
         <div>
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
@@ -4671,6 +4676,20 @@ function renderLandingScreen(){
       }
     };
   });
+  const revealEls = document.querySelectorAll('.landingReveal');
+  if('IntersectionObserver' in window){
+    const revealObs = new IntersectionObserver((entries)=>{
+      entries.forEach(entry=>{
+        if(entry.isIntersecting){
+          entry.target.classList.add('show');
+          revealObs.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12 });
+    revealEls.forEach(el=>revealObs.observe(el));
+  } else {
+    revealEls.forEach(el=>el.classList.add('show'));
+  }
 }
 function renderLoginScreen(mensagem, emailPreenchido, tipoMensagem){
   window.scrollTo(0,0);
