@@ -5024,6 +5024,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app-check.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail, verifyBeforeUpdateEmail, reauthenticateWithCredential, EmailAuthProvider, applyActionCode } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, serverTimestamp, collection, query, orderBy, limit, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
@@ -5037,6 +5038,17 @@ const firebaseConfig = {
 };
 
 const fbApp = initializeApp(firebaseConfig);
+// App Check: confirma ao Firebase que as requisições vêm mesmo do app publicado em
+// perfitmanager.com.br, usando reCAPTCHA v3 (invisível, sem desafio pro usuário resolver).
+// Fica em modo monitoramento até ativarmos "Enforce" no Firebase Console.
+try{
+  initializeAppCheck(fbApp, {
+    provider: new ReCaptchaV3Provider('6LfC_YwtAAAAANts1cVFX1pocMG8LfkLHi_zsGw_'),
+    isTokenAutoRefreshEnabled: true
+  });
+}catch(e){
+  console.warn('App Check não inicializou:', e);
+}
 const auth = getAuth(fbApp);
 const dbFire = getFirestore(fbApp);
 
